@@ -1,0 +1,29 @@
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.gpu
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        BACKEND_URL: http://backend:8000/api/:path*
+    ports:
+      - "3000:3000"
+    environment:
+      - BACKEND_URL=http://backend:8000/api/:path*
+    depends_on:
+      - backend
