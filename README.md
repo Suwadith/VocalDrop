@@ -1,6 +1,10 @@
 # VocalDrop 🎤
 
 <p align="center">
+  <img src="frontend/public/logo.png" width="120" alt="VocalDrop Logo" />
+</p>
+
+<p align="center">
   <em>An open-source, AI-powered karaoke platform and ad-free music player built on top of YouTube Music.</em>
 </p>
 
@@ -168,8 +172,6 @@ If you chose the Standard Deployment (Option A) and want to use the app from you
 *(Ensure your firewall allows connections on ports 3000 and 8000).*
 
 ---
-
-## 🎙️ Karaoke Recording Studio
 
 ## 🎙️ Karaoke Recording Studio
 
