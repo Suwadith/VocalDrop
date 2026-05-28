@@ -251,6 +251,9 @@ function PlayerContent() {
   const videoStreamRef = useRef<MediaStream | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
+  const previewVideoRef = useRef<HTMLVideoElement | null>(null);
+  const previewStreamRef = useRef<MediaStream | null>(null);
+
   const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([]);
   const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
   const [selectedAudioDevice, setSelectedAudioDevice] = useState<string>('');
@@ -310,6 +313,54 @@ function PlayerContent() {
       loadDevices();
     }
   }, [showRecordModal]);
+
+  // Live Video Preview Effect
+  useEffect(() => {
+    if (!showRecordModal || videoDevices.length === 0) {
+      if (previewStreamRef.current) {
+        previewStreamRef.current.getTracks().forEach(t => t.stop());
+        previewStreamRef.current = null;
+      }
+      return;
+    }
+
+    let isCancelled = false;
+    const startPreview = async () => {
+      if (previewStreamRef.current) {
+        previewStreamRef.current.getTracks().forEach(t => t.stop());
+      }
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            width: { ideal: 640 }, // Preview doesn't need to be 1080p
+            ...(videoAspectRatio === 'portrait' ? { aspectRatio: { ideal: 0.5625 } } : 
+                videoAspectRatio === 'landscape' ? { aspectRatio: { ideal: 1.7777 } } : {}),
+            deviceId: selectedVideoDevice ? { exact: selectedVideoDevice } : undefined
+          }
+        });
+        if (isCancelled) {
+          stream.getTracks().forEach(t => t.stop());
+          return;
+        }
+        previewStreamRef.current = stream;
+        if (previewVideoRef.current) {
+          previewVideoRef.current.srcObject = stream;
+          previewVideoRef.current.play().catch(() => {});
+        }
+      } catch (err) {
+        console.error("Preview failed:", err);
+      }
+    };
+
+    startPreview();
+
+    return () => {
+      isCancelled = true;
+      if (previewStreamRef.current) {
+        previewStreamRef.current.getTracks().forEach(t => t.stop());
+      }
+    };
+  }, [showRecordModal, selectedVideoDevice, videoAspectRatio, videoDevices]);
 
   useEffect(() => {
     if (isRecording && recordingMode === 'video' && videoRef.current && videoStreamRef.current) {
@@ -866,6 +917,32 @@ function PlayerContent() {
               )}
               {videoDevices.length > 0 && (
                 <>
+                  <div>
+                    <label style={{color: 'rgba(255,255,255,0.7)', fontSize: '0.85rem', marginBottom: '0.5rem', display: 'block'}}>Live Camera Preview</label>
+                    <div style={{
+                      width: '100%', 
+                      background: 'rgba(0,0,0,0.5)', 
+                      borderRadius: '8px', 
+                      overflow: 'hidden', 
+                      display: 'flex', 
+                      justifyContent: 'center', 
+                      alignItems: 'center',
+                      marginBottom: '1rem',
+                      height: '200px',
+                      border: '1px solid rgba(255,255,255,0.1)'
+                    }}>
+                      <video 
+                        ref={previewVideoRef} 
+                        muted 
+                        playsInline 
+                        style={{
+                          height: '100%',
+                          aspectRatio: videoAspectRatio === 'portrait' ? '9/16' : videoAspectRatio === 'landscape' ? '16/9' : 'auto',
+                          objectFit: 'cover'
+                        }} 
+                      />
+                    </div>
+                  </div>
                   <div>
                     <label style={{color: 'rgba(255,255,255,0.7)', fontSize: '0.85rem', marginBottom: '0.5rem', display: 'block'}}>Camera</label>
                     <select value={selectedVideoDevice} onChange={e => { setSelectedVideoDevice(e.target.value); localStorage.setItem('vd_video_device', e.target.value); }} style={{width: '100%', padding: '0.75rem', borderRadius: '8px', background: 'rgba(255,255,255,0.1)', color: 'white', border: 'none', outline: 'none'}}>
