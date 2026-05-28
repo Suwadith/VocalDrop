@@ -14,8 +14,8 @@ export class PitchShifter {
   private fade1Source: AudioBufferSourceNode | null = null;
   private fade2Source: AudioBufferSourceNode | null = null;
   
-  private fadeTime: number = 0.050;
-  private bufferTime: number = 0.100;
+  private fadeTime: number = 0.025;
+  private bufferTime: number = 0.050;
   
   private pitchRatio: number = 1.0;
   

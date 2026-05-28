@@ -1174,27 +1174,28 @@ function PlayerContent() {
                 <Music2 size={16} /> Key Adjust (Pitch)
               </label>
               <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem', fontVariantNumeric: 'tabular-nums' }}>
-                {pitchOffset > 0 ? '+' : ''}{pitchOffset} Semitones
+                {pitchOffset > 0 ? '+' : ''}{pitchOffset.toFixed(1)} Semitones
               </span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-              <span style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)' }}>-6</span>
+              <span style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)' }}>-6.0</span>
               <input
                 type="range"
                 min="-6"
                 max="6"
-                step="1"
+                step="0.1"
                 value={pitchOffset}
                 onChange={(e) => {
-                  const val = parseInt(e.target.value);
-                  setPitchOffset(val);
+                  setPitchOffset(parseFloat(e.target.value));
+                }}
+                onPointerUp={(e) => {
                   if (chunkPlayer.current) {
-                    chunkPlayer.current.setPitchOffset(val);
+                    chunkPlayer.current.setPitchOffset(parseFloat(e.currentTarget.value));
                   }
                 }}
                 style={{ flex: 1, accentColor: '#ff2d55' }}
               />
-              <span style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)' }}>+6</span>
+              <span style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)' }}>+6.0</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'center', marginTop: '0.5rem' }}>
               <button 
