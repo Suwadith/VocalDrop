@@ -2,8 +2,9 @@
 
 import { useEffect, useState, useRef, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Play, Pause, Mic2, Loader2, ArrowLeft, Languages, Home, Rewind, FastForward, Circle, Video, Mic, StopCircle } from 'lucide-react';
+import { Play, Pause, Mic2, Loader2, ArrowLeft, Languages, Home, Rewind, FastForward, Circle, Video, Mic, StopCircle, Music2 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { PitchShifter } from './PitchShifter';
 import { getNoSleep } from '@/utils/noSleep';
 import styles from './player.module.css';
 
@@ -12,6 +13,7 @@ class ChunkPlayer {
   masterGain: GainNode;
   vocGain: GainNode;
   instGain: GainNode;
+  pitchShifter: PitchShifter;
   
   buffers = new Map<number, {inst: AudioBuffer, voc: AudioBuffer, start: number, end: number}>();
   scheduledSources: {inst: AudioBufferSourceNode, voc: AudioBufferSourceNode, idx: number, instGain: GainNode, vocGain: GainNode}[] = [];
@@ -26,9 +28,11 @@ class ChunkPlayer {
     this.masterGain = this.ctx.createGain();
     this.vocGain = this.ctx.createGain();
     this.instGain = this.ctx.createGain();
+    this.pitchShifter = new PitchShifter(this.ctx);
     
+    this.instGain.connect(this.pitchShifter.input);
+    this.pitchShifter.output.connect(this.masterGain);
     this.vocGain.connect(this.masterGain);
-    this.instGain.connect(this.masterGain);
     this.masterGain.connect(this.ctx.destination);
   }
 
@@ -53,8 +57,14 @@ class ChunkPlayer {
   }
 
   setVocalsMuted(muted: boolean) {
-    // Smooth transition to prevent popping
-    this.vocGain.gain.setTargetAtTime(muted ? 0 : 1, this.ctx.currentTime, 0.05);
+    const now = this.ctx.currentTime;
+    this.vocGain.gain.cancelScheduledValues(now);
+    this.vocGain.gain.setValueAtTime(this.vocGain.gain.value, now);
+    this.vocGain.gain.linearRampToValueAtTime(muted ? 0.0 : 1.0, now + 0.5);
+  }
+
+  setPitchOffset(semitones: number) {
+    this.pitchShifter.setPitchOffset(semitones);
   }
 
   getCurrentTime(): number {
@@ -79,7 +89,6 @@ class ChunkPlayer {
     this.pauseTime += (this.ctx.currentTime - this.startTime);
     this.isPlaying = false;
     
-    // Stop all scheduled sources
     this.scheduledSources.forEach(s => {
       try { s.inst.stop(); s.voc.stop(); } catch(e){}
     });
@@ -117,17 +126,14 @@ class ChunkPlayer {
   scheduleFrom(timeOffset: number) {
     let now = this.ctx.currentTime;
     
-    // Find all chunks that should play at or after timeOffset
     const sortedIdx = Array.from(this.buffers.keys()).sort((a,b) => a-b);
     
     for (let idx of sortedIdx) {
       const chunk = this.buffers.get(idx)!;
-      // If chunk is completely in the past, skip
       if (chunk.end <= timeOffset) continue;
       
       const chunkOffset = Math.max(0, timeOffset - chunk.start);
       const playStart = now + Math.max(0, chunk.start - timeOffset);
-      const duration = chunk.end - chunk.start - chunkOffset;
       
       const instSrc = this.ctx.createBufferSource();
       const vocSrc = this.ctx.createBufferSource();
@@ -135,7 +141,6 @@ class ChunkPlayer {
       instSrc.buffer = chunk.inst;
       vocSrc.buffer = chunk.voc;
       
-      // Crossfade overlapping regions
       const instGain = this.ctx.createGain();
       const vocGain = this.ctx.createGain();
       
@@ -145,8 +150,6 @@ class ChunkPlayer {
       instGain.connect(this.instGain);
       vocGain.connect(this.vocGain);
       
-      // Calculate crossfades based on absolute song time to ensure perfect 
-      // continuity even if we schedule mid-overlap.
       const fadeDuration = 1.0;
       let initialGain = 1.0;
       
@@ -163,7 +166,6 @@ class ChunkPlayer {
       instGain.gain.setValueAtTime(initialGain, now);
       vocGain.gain.setValueAtTime(initialGain, now);
       
-      // Schedule fade in
       if (idx > 0 && chunk.start > timeOffset) {
         instGain.gain.setValueAtTime(0, now + (chunk.start - timeOffset));
         instGain.gain.linearRampToValueAtTime(1, now + (chunk.start + fadeDuration - timeOffset));
@@ -174,7 +176,6 @@ class ChunkPlayer {
         vocGain.gain.linearRampToValueAtTime(1, now + (chunk.start + fadeDuration - timeOffset));
       }
       
-      // Schedule fade out
       if (timeOffset < chunk.end - fadeDuration) {
         instGain.gain.setValueAtTime(1, now + (chunk.end - fadeDuration - timeOffset));
         instGain.gain.linearRampToValueAtTime(0, now + (chunk.end - timeOffset));
@@ -203,7 +204,6 @@ function PlayerContent() {
   const coverParam = searchParams.get('cover') || '';
   const mode = searchParams.get('mode') || 'karaoke';
   
-  // Upgrade the thumbnail to original size (=s0) for the high-res player UI
   let cover = coverParam.includes('=w') ? coverParam.replace(/=w\d+-h\d+(?:-[a-zA-Z0-9\-]+)?/, '=s0') : coverParam;
   if (cover.includes('i.ytimg.com')) {
     cover = cover.split('?')[0];
@@ -236,13 +236,12 @@ function PlayerContent() {
   const [duration, setDuration] = useState(0);
   
   const [karaokeMode, setKaraokeMode] = useState(false);
-  const [karaokeReady, setKaraokeReady] = useState(mode === 'listen'); // listen mode implies we don't need karaoke
+  const [karaokeReady, setKaraokeReady] = useState(mode === 'listen');
   const [separationLoading, setSeparationLoading] = useState(mode === 'karaoke');
 
   const originalAudio = useRef<HTMLAudioElement | null>(null);
   const chunkPlayer = useRef<ChunkPlayer | null>(null);
   
-  // Recording State
   const [showRecordModal, setShowRecordModal] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingMode, setRecordingMode] = useState<'audio' | 'video' | null>(null);
@@ -261,10 +260,10 @@ function PlayerContent() {
   const [latencyMs, setLatencyMs] = useState<number>(80);
   const [videoLatencyMs, setVideoLatencyMs] = useState<number>(0);
   const [videoAspectRatio, setVideoAspectRatio] = useState<'portrait' | 'landscape' | 'portrait_43' | 'landscape_43' | 'auto'>('auto');
-  const [reverbAmount, setReverbAmount] = useState<number>(0.05); // 5% wet mix default
-  const [micVolume, setMicVolume] = useState<number>(0.7); // 70% volume default
+  const [reverbAmount, setReverbAmount] = useState<number>(0.05);
+  const [micVolume, setMicVolume] = useState<number>(0.7);
+  const [pitchOffset, setPitchOffset] = useState<number>(0);
 
-  // Load saved settings from localStorage on mount
   useEffect(() => {
     const savedMode = localStorage.getItem('vd_recording_mode');
     if (savedMode === 'audio' || savedMode === 'video') setRecordingMode(savedMode);
@@ -314,7 +313,6 @@ function PlayerContent() {
     }
   }, [showRecordModal]);
 
-  // Live Video Preview Effect
   useEffect(() => {
     if (!showRecordModal || videoDevices.length === 0) {
       if (previewStreamRef.current) {
@@ -467,7 +465,6 @@ function PlayerContent() {
     
     animationRef.current = requestAnimationFrame(updateTime);
 
-    // 1. Fetch Lyrics
     fetch(`/api/lyrics/${id}?title=${encodeURIComponent(title || '')}&artist=${encodeURIComponent(artist || '')}`)
       .then(res => res.json())
       .then(data => {
@@ -501,13 +498,11 @@ function PlayerContent() {
         }
       });
 
-    // 2. Prepare audio
     fetch(`/api/prepare/${id}?title=${encodeURIComponent(title || '')}&artist=${encodeURIComponent(artist || '')}&mode=${mode}`, { method: 'POST' })
       .then(res => res.json())
       .then(data => {
         if (isCancelled) return;
         
-        // Setup original audio
         if (!originalAudio.current) {
           const audio = new Audio(`${data.originalUrl}`);
           audio.crossOrigin = "anonymous";
@@ -521,9 +516,8 @@ function PlayerContent() {
           }
         }
         
-        if (mode === 'listen') return; // Skip chunk polling entirely
+        if (mode === 'listen') return;
         
-        // Poll for chunks
         let downloadedChunks = new Set();
         
         pollInterval = setInterval(() => {
@@ -547,7 +541,6 @@ function PlayerContent() {
                     setSeparationLoading(false);
                     setKaraokeReady(true);
                     
-                    // Auto-switch to karaoke mode immediately when first chunk is ready
                     setKaraokeMode(true);
                     chunkPlayer.current.setVocalsMuted(true);
                     
@@ -571,7 +564,6 @@ function PlayerContent() {
                 }
               }
               
-              // Reschedule if we are already playing stems and found new chunks
               if (newChunksFound && activeAudio.current === 'stems' && (chunkPlayer.current.isPlaying || chunkPlayer.current.isBuffering)) {
                  if (chunkPlayer.current.isPlaying) chunkPlayer.current.pause();
                  chunkPlayer.current.isBuffering = false;
@@ -602,7 +594,6 @@ function PlayerContent() {
   }, [id]);
 
   const togglePlay = () => {
-    // Crucially, trigger noSleep synchronously with the click event handler!
     const noSleep = getNoSleep();
     if (!isPlaying) {
       if (noSleep) noSleep.enable();
@@ -656,7 +647,6 @@ function PlayerContent() {
       chunkPlayer.current.seek(newTime);
     }
     
-    // Notify backend to prioritize this time for separation!
     fetch(`/api/seek/${id}?time=${newTime}`, { method: 'POST' }).catch(() => {});
     setCurrentTime(newTime);
   };
@@ -749,10 +739,9 @@ function PlayerContent() {
       navigator.mediaSession.setActionHandler('seekforward', skipForward);
     }
   });
+
   const startRecording = async (recMode: 'audio' | 'video') => {
     try {
-      // Forcefully stop the low-res preview stream to release the camera hardware lock.
-      // This allows the browser to re-initialize the camera at full 1080p resolution.
       if (previewStreamRef.current) {
         previewStreamRef.current.getTracks().forEach(t => t.stop());
         previewStreamRef.current = null;
@@ -800,7 +789,6 @@ function PlayerContent() {
       instDelayNode.delayTime.value = baseInstDelay + videoDelaySec;
       micDelayNode.delayTime.value = baseMicDelay + videoDelaySec;
       
-      // Mix instrumental slightly lower (50%) in the final recording so vocals sit nicely on top
       const instRecordingGain = ctx.createGain();
       instRecordingGain.gain.value = 0.50;
 
@@ -817,17 +805,16 @@ function PlayerContent() {
       micGainNode.connect(micDelayNode);
       micDelayNode.connect(delayedMicGain);
 
-      // Studio Plate Reverb: Warm and tight
       const convolver = ctx.createConvolver();
-      const length = ctx.sampleRate * 1.5; // 1.5 seconds (tighter studio space)
+      const length = ctx.sampleRate * 1.5;
       const buffer = ctx.createBuffer(2, length, ctx.sampleRate);
       for (let c = 0; c < 2; c++) {
         const channel = buffer.getChannelData(c);
         let lastOut = 0;
         for (let i = 0; i < length; i++) {
           const noise = (Math.random() * 2 - 1);
-          lastOut = lastOut + 0.15 * (noise - lastOut); // Low-pass filter to remove metallic ringing
-          channel[i] = lastOut * Math.pow(1 - i / length, 5.0); // Smooth exponential decay
+          lastOut = lastOut + 0.15 * (noise - lastOut);
+          channel[i] = lastOut * Math.pow(1 - i / length, 5.0);
         }
       }
       convolver.buffer = buffer;
@@ -846,15 +833,12 @@ function PlayerContent() {
       wetGain.connect(destNode);
 
       const tracks: MediaStreamTrack[] = [];
-      
-      // We attach these to the media recorder object so we can clean them up in onstop
       let animationFrameId: number | null = null;
       let hiddenVideo: HTMLVideoElement | null = null;
 
       if (recMode === 'video') {
         const videoTrack = stream.getVideoTracks()[0];
         if (videoTrack && videoAspectRatio !== 'auto') {
-          // Determine exact target dimensions
           let targetW = 1920;
           let targetH = 1080;
           if (videoAspectRatio === 'portrait') { targetW = 1080; targetH = 1920; }
@@ -877,12 +861,9 @@ function PlayerContent() {
             if (ctx2d && hiddenVideo && hiddenVideo.readyState >= 2) {
               const vw = hiddenVideo.videoWidth;
               const vh = hiddenVideo.videoHeight;
-              
-              // Simulate CSS object-fit: cover
               const scale = Math.max(targetW / vw, targetH / vh);
               const x = (targetW / 2) - (vw / 2) * scale;
               const y = (targetH / 2) - (vh / 2) * scale;
-              
               ctx2d.fillStyle = '#000';
               ctx2d.fillRect(0, 0, targetW, targetH);
               ctx2d.drawImage(hiddenVideo, x, y, vw * scale, vh * scale);
@@ -891,7 +872,7 @@ function PlayerContent() {
           };
           drawLoop();
 
-          const canvasStream = canvas.captureStream(30); // 30 FPS
+          const canvasStream = canvas.captureStream(30);
           const croppedTrack = canvasStream.getVideoTracks()[0];
           if (croppedTrack) tracks.push(croppedTrack);
         } else if (videoTrack) {
@@ -901,11 +882,10 @@ function PlayerContent() {
       destNode.stream.getAudioTracks().forEach((t: MediaStreamTrack) => tracks.push(t));
 
       const mixedStream = new MediaStream(tracks);
-
       const options: MediaRecorderOptions = { mimeType: recMode === 'video' ? 'video/webm' : 'audio/webm' };
       if (recMode === 'video') {
-        options.videoBitsPerSecond = 8000000; // 8 Mbps for high quality HD
-        options.audioBitsPerSecond = 320000; // 320 kbps for audio
+        options.videoBitsPerSecond = 8000000;
+        options.audioBitsPerSecond = 320000;
       } else {
         options.audioBitsPerSecond = 320000;
       }
@@ -925,7 +905,6 @@ function PlayerContent() {
           hiddenVideo.pause();
           hiddenVideo.srcObject = null;
         }
-
         const blob = new Blob(recordedChunksRef.current, { type: recMode === 'video' ? 'video/webm' : 'audio/webm' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -1185,6 +1164,50 @@ function PlayerContent() {
           <div className={styles.songTitle}>{title}</div>
           <div className={styles.songArtist}>{artist}</div>
         </div>
+
+        {/* Karaoke Pitch Slider */}
+        {karaokeMode && !isRecording && (
+          <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'rgba(0,0,0,0.3)', borderRadius: '12px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+              <label style={{ color: 'rgba(255,255,255,0.9)', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Music2 size={16} /> Key Adjust (Pitch)
+              </label>
+              <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem', fontVariantNumeric: 'tabular-nums' }}>
+                {pitchOffset > 0 ? '+' : ''}{pitchOffset} Semitones
+              </span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <span style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)' }}>-6</span>
+              <input
+                type="range"
+                min="-6"
+                max="6"
+                step="1"
+                value={pitchOffset}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value);
+                  setPitchOffset(val);
+                  if (chunkPlayer.current) {
+                    chunkPlayer.current.setPitchOffset(val);
+                  }
+                }}
+                style={{ flex: 1, accentColor: '#ff2d55' }}
+              />
+              <span style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)' }}>+6</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'center', marginTop: '0.5rem' }}>
+              <button 
+                onClick={() => {
+                  setPitchOffset(0);
+                  if (chunkPlayer.current) chunkPlayer.current.setPitchOffset(0);
+                }}
+                style={{ background: 'none', border: 'none', color: pitchOffset !== 0 ? '#ff2d55' : 'rgba(255,255,255,0.3)', fontSize: '0.75rem', cursor: pitchOffset !== 0 ? 'pointer' : 'default' }}
+              >
+                Reset to Original Key
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className={styles.timeline}>
           <span>{formatTime(currentTime)}</span>
