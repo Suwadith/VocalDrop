@@ -185,8 +185,10 @@ VocalDrop features an advanced, entirely in-browser **Karaoke Recording Studio**
    - **Mic / Camera Selection:** Pick exactly which microphone and webcam to use.
    - **Mic Input Delay Compensation:** Fix hardware latency by aligning your recorded voice perfectly with the music (defaults to `80ms`).
    - **Camera Video Delay:** Delays the entire audio mix to wait for your camera video if it is lagging behind (defaults to `0ms`).
+   - **Video Aspect Ratio:** Choose between Auto-detect, Portrait (9:16), or Landscape (16:9) for your live video feed.
    - **Microphone Volume:** Boost your voice up to 400% to ensure you cut through loud instrumental mixes (defaults to `70%`).
    - **Studio Reverb:** Add synthetic acoustic depth (wetness) to your voice (defaults to `5%`).
+   - **Intelligent Ducking:** Automatically drops the instrumental backing track down to 50% volume in the final recording, carving out a massive pocket for your vocals to sit front-and-center.
 4. Choose between **Voice Only** or **Voice + Video** (requires Camera permissions).
 5. Sing along! The app mixes your voice and the music synchronously. **Pro-Tip:** You can toggle the Karaoke button off at any time during a recording to bring the original vocals back in (e.g., to let the original artist sing the chorus) without stopping your recording!
 6. When finished (or when you leave the page / explicitly click the Stop Record button), the recording will stop, and a perfectly mixed **320kbps Studio Quality** `.webm` media file will instantly download directly to your device!
