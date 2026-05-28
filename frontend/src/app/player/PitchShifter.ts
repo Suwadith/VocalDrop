@@ -111,8 +111,9 @@ export class PitchShifter {
     this.fade1Source.connect(this.fade1.gain);
     this.fade2Source.connect(this.fade2.gain);
     
-    // Half cycle offset
-    const halfCycle = (activeTime - this.fadeTime) / 2;
+    const length1 = Math.floor(activeTime * this.ctx.sampleRate);
+    const length2 = Math.floor((activeTime - 2 * this.fadeTime) * this.ctx.sampleRate);
+    const halfCycle = (length1 + length2) / (2 * this.ctx.sampleRate);
     
     this.mod1.start(t);
     this.fade1Source.start(t);
