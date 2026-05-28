@@ -1,8 +1,38 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Vocaldrop 🎤
+
+Vocaldrop is a modern, web-based Karaoke and vocal recording application built with Next.js and the Web Audio API. It allows users to sing along to their favorite tracks with synchronized lyrics, high-quality camera recording, and real-time audio effects.
+
+## Features
+
+### 🎥 High-Resolution Video Recording
+- **Continuity Camera Support:** Optimized to bypass the default 1080p clamping on macOS Continuity Camera, enforcing a 4:3 aspect ratio (`3840x2880`) to guarantee maximum native resolution.
+- **Audio/Video Muxing:** Synchronously captures the user's camera feed alongside their vocal performance, merging them into a high-quality WebM container via `MediaRecorder`.
+- **Hardware Acceleration:** Uses optimal `videoBitsPerSecond` and codec configurations for smooth, lag-free recording.
+
+### 🎛️ Real-Time Pitch Correction (Key Shifter)
+- **Granular Synthesis Engine:** Features a custom-built Web Audio API `PitchShifter` node using Jungle.js granular synthesis.
+- **Real-Time Key Adjustment:** Shift the backing track's key up or down by up to 6 semitones (in 0.1 increments) in real-time, allowing singers to comfortably match their vocal range.
+- **Artifact-Free Playback:** Uses a locked grain size (120ms) and phase-staggered delay buffers to eliminate audio dropouts, volume stuttering, and tempo fluctuation.
+- **Recording Integration:** The shifted backing track is flawlessly routed into the master recording node, ensuring the final exported video matches the pitch the user heard while singing.
+
+### 🎵 Dynamic Karaoke Mode
+- **Synchronized Lyrics:** Apple Music style animated, scrolling lyrics that highlight exactly to the beat.
+- **Audio Ducking:** Isolate the vocal track or sing along with the original vocals.
+- **Responsive UI:** A sleek, glassmorphic player interface that scales perfectly across desktop and mobile devices.
 
 ## Getting Started
 
-First, run the development server:
+First, install the dependencies:
+
+```bash
+npm install
+# or
+yarn install
+# or
+pnpm install
+```
+
+Then, run the development server:
 
 ```bash
 npm run dev
@@ -10,27 +40,13 @@ npm run dev
 yarn dev
 # or
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the application.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Technologies Used
+- Next.js (React 19)
+- Web Audio API & MediaRecorder API
+- Tailwind CSS v4
+- Framer Motion
+- Lucide React Icons
