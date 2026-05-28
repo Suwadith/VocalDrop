@@ -257,6 +257,7 @@ function PlayerContent() {
   const [selectedVideoDevice, setSelectedVideoDevice] = useState<string>('');
   const [latencyMs, setLatencyMs] = useState<number>(80);
   const [videoLatencyMs, setVideoLatencyMs] = useState<number>(0);
+  const [videoAspectRatio, setVideoAspectRatio] = useState<'portrait' | 'landscape' | 'auto'>('auto');
   const [reverbAmount, setReverbAmount] = useState<number>(0.05); // 5% wet mix default
   const [micVolume, setMicVolume] = useState<number>(0.7); // 70% volume default
 
@@ -270,6 +271,11 @@ function PlayerContent() {
     
     const savedVideoLatency = localStorage.getItem('vd_video_latency_ms');
     if (savedVideoLatency) setVideoLatencyMs(Number(savedVideoLatency));
+    
+    const savedAspectRatio = localStorage.getItem('vd_video_aspect_ratio');
+    if (savedAspectRatio === 'portrait' || savedAspectRatio === 'landscape' || savedAspectRatio === 'auto') {
+      setVideoAspectRatio(savedAspectRatio as any);
+    }
     
     const savedReverb = localStorage.getItem('vd_reverb_amount');
     if (savedReverb) setReverbAmount(Number(savedReverb));
@@ -701,7 +707,8 @@ function PlayerContent() {
           autoGainControl: false
         },
         video: recMode === 'video' ? {
-          aspectRatio: { ideal: 0.5625 }, // Force 9:16 portrait mode
+          ...(videoAspectRatio === 'portrait' ? { aspectRatio: { ideal: 0.5625 } } : 
+              videoAspectRatio === 'landscape' ? { aspectRatio: { ideal: 1.7777 } } : {}),
           deviceId: selectedVideoDevice ? { exact: selectedVideoDevice } : undefined
         } : false
       });
@@ -857,8 +864,15 @@ function PlayerContent() {
                   </div>
                   <div>
                     <label style={{color: 'rgba(255,255,255,0.7)', fontSize: '0.85rem', marginBottom: '0.5rem', display: 'block'}}>Camera Video Delay ({videoLatencyMs}ms)</label>
-                    <input type="range" min="0" max="1000" value={videoLatencyMs} onChange={e => { setVideoLatencyMs(parseInt(e.target.value)); localStorage.setItem('vd_video_latency_ms', e.target.value); }} style={{width: '100%'}} />
-                    <p style={{color: 'rgba(255,255,255,0.4)', fontSize: '0.75rem', marginTop: '0.5rem'}}>Increase to delay the audio mix if your camera video is lagging behind.</p>
+                    <input type="range" min="0" max="1000" value={videoLatencyMs} onChange={e => { setVideoLatencyMs(parseInt(e.target.value)); localStorage.setItem('vd_video_latency_ms', e.target.value); }} style={{width: '100%', marginBottom: '1rem'}} />
+                  </div>
+                  <div>
+                    <label style={{color: 'rgba(255,255,255,0.7)', fontSize: '0.85rem', marginBottom: '0.5rem', display: 'block'}}>Video Aspect Ratio</label>
+                    <select value={videoAspectRatio} onChange={e => { setVideoAspectRatio(e.target.value as any); localStorage.setItem('vd_video_aspect_ratio', e.target.value); }} style={{width: '100%', padding: '0.75rem', borderRadius: '8px', background: 'rgba(255,255,255,0.1)', color: 'white', border: 'none', outline: 'none'}}>
+                      <option value="auto">Auto-detect (Native Camera)</option>
+                      <option value="portrait">Portrait (9:16)</option>
+                      <option value="landscape">Landscape (16:9)</option>
+                    </select>
                   </div>
                 </>
               )}
@@ -945,8 +959,18 @@ function PlayerContent() {
 
       <div className={styles.leftPane}>
         {isRecording && recordingMode === 'video' ? (
-          <div className={`${styles.videoWrapper} ${isPlaying ? styles.playing : ''}`}>
-            <video ref={videoRef} autoPlay muted playsInline style={{width: '100%', height: '100%', objectFit: 'cover'}} />
+          <div className={`${styles.videoWrapper} ${isPlaying ? styles.playing : ''}`}
+               style={{ 
+                 aspectRatio: videoAspectRatio === 'portrait' ? '9/16' : videoAspectRatio === 'landscape' ? '16/9' : 'auto',
+                 width: videoAspectRatio === 'auto' ? 'auto' : undefined
+               }}>
+            <video 
+              ref={videoRef}
+              className={styles.cover}
+              muted
+              playsInline
+              style={{ objectFit: 'cover' }}
+            />
           </div>
         ) : (
           <div className={`${styles.coverWrapper} ${isPlaying ? styles.playing : ''}`}>
