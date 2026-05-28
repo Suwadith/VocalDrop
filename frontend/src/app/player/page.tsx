@@ -1086,15 +1086,56 @@ function PlayerContent() {
         </button>
       </div>
 
-      {englishLyrics.length > 0 && (
-        <button 
-          onClick={() => setLyricsLang(prev => prev === 'original' ? 'english' : 'original')}
-          style={{position:'absolute', top:'2rem', right:'2rem', zIndex: 100, color: 'white', background: 'rgba(0,0,0,0.5)', padding: '0.75rem', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'background 0.2s ease', border: '1px solid rgba(255,255,255,0.2)'}}
-          title="Toggle Romanized Lyrics"
-        >
-          <Languages size={24} />
-        </button>
-      )}
+      <div style={{ position: 'absolute', top: '2rem', right: '2rem', zIndex: 100, display: 'flex', gap: '1rem', alignItems: 'center' }}>
+        {/* Pitch Shifter Pill */}
+        {mode === 'karaoke' && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.75rem',
+            background: 'rgba(0,0,0,0.5)',
+            backdropFilter: 'blur(10px)',
+            padding: '0.5rem 1rem',
+            borderRadius: '100px',
+            border: '1px solid rgba(255,255,255,0.2)'
+          }}>
+            <Music2 size={18} color="rgba(255,255,255,0.7)" />
+            <input
+              type="range"
+              min="-6"
+              max="6"
+              step="0.1"
+              value={pitchOffset}
+              onChange={(e) => setPitchOffset(parseFloat(e.target.value))}
+              onPointerUp={(e) => chunkPlayer.current?.setPitchOffset(parseFloat(e.currentTarget.value))}
+              style={{ width: '80px', accentColor: '#ff2d55' }}
+            />
+            <span style={{ color: 'rgba(255,255,255,0.9)', fontSize: '0.85rem', fontVariantNumeric: 'tabular-nums', width: '2.5rem', textAlign: 'right' }}>
+              {pitchOffset > 0 ? '+' : ''}{pitchOffset.toFixed(1)}
+            </span>
+            {pitchOffset !== 0 && (
+              <button 
+                onClick={() => { setPitchOffset(0); chunkPlayer.current?.setPitchOffset(0); }}
+                style={{ background: 'none', border: 'none', color: '#ff2d55', padding: '0 0.25rem', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}
+                title="Reset Pitch"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Lyrics Translation Toggle */}
+        {englishLyrics.length > 0 && (
+          <button 
+            onClick={() => setLyricsLang(prev => prev === 'original' ? 'english' : 'original')}
+            style={{ color: 'white', background: 'rgba(0,0,0,0.5)', padding: '0.75rem', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'background 0.2s ease', border: '1px solid rgba(255,255,255,0.2)' }}
+            title="Toggle Romanized Lyrics"
+          >
+            <Languages size={24} />
+          </button>
+        )}
+      </div>
 
       <div className={styles.leftPane}>
         {isRecording && recordingMode === 'video' ? (
@@ -1165,51 +1206,6 @@ function PlayerContent() {
           <div className={styles.songTitle}>{title}</div>
           <div className={styles.songArtist}>{artist}</div>
         </div>
-
-        {/* Karaoke Pitch Slider */}
-        {mode === 'karaoke' && (
-          <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'rgba(0,0,0,0.3)', borderRadius: '12px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-              <label style={{ color: 'rgba(255,255,255,0.9)', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Music2 size={16} /> Key Adjust (Pitch)
-              </label>
-              <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem', fontVariantNumeric: 'tabular-nums' }}>
-                {pitchOffset > 0 ? '+' : ''}{pitchOffset.toFixed(1)} Semitones
-              </span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-              <span style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)' }}>-6.0</span>
-              <input
-                type="range"
-                min="-6"
-                max="6"
-                step="0.1"
-                value={pitchOffset}
-                onChange={(e) => {
-                  setPitchOffset(parseFloat(e.target.value));
-                }}
-                onPointerUp={(e) => {
-                  if (chunkPlayer.current) {
-                    chunkPlayer.current.setPitchOffset(parseFloat(e.currentTarget.value));
-                  }
-                }}
-                style={{ flex: 1, accentColor: '#ff2d55' }}
-              />
-              <span style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)' }}>+6.0</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'center', marginTop: '0.5rem' }}>
-              <button 
-                onClick={() => {
-                  setPitchOffset(0);
-                  if (chunkPlayer.current) chunkPlayer.current.setPitchOffset(0);
-                }}
-                style={{ background: 'none', border: 'none', color: pitchOffset !== 0 ? '#ff2d55' : 'rgba(255,255,255,0.3)', fontSize: '0.75rem', cursor: pitchOffset !== 0 ? 'pointer' : 'default' }}
-              >
-                Reset to Original Key
-              </button>
-            </div>
-          </div>
-        )}
 
         <div className={styles.timeline}>
           <span>{formatTime(currentTime)}</span>
