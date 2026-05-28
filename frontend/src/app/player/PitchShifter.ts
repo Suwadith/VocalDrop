@@ -83,10 +83,16 @@ export class PitchShifter {
   private play() {
     const shiftUp = this.pitchRatio > 1;
     const timeRatio = shiftUp ? (1 - 1 / this.pitchRatio) : (1 / this.pitchRatio - 1);
-    const activeTime = this.bufferTime / timeRatio;
     
-    // If activeTime is too small or invalid, gracefully fallback
-    if (activeTime <= this.fadeTime * 2 || !isFinite(activeTime)) return;
+    // Lock grain size (activeTime) to a constant musical rate (e.g., 120ms) to ensure consistent pacing.
+    // Instead of stretching the grain to match a fixed delay buffer (which causes massive pacing jumps at small pitch shifts),
+    // we scale the max delay buffer to match the pitch ratio.
+    const activeTime = 0.120;
+    this.fadeTime = 0.050; // Update class property so createDelayTimeBuffer uses it
+    this.bufferTime = activeTime * timeRatio;
+    
+    // If pitch shift is astronomically small, just return (handled by semitones === 0 usually)
+    if (this.bufferTime <= 0) return;
     
     const fadeBuffer = this.createFadeBuffer(activeTime, this.fadeTime);
     const delayBuffer = this.createDelayTimeBuffer(activeTime, this.fadeTime, shiftUp);
