@@ -260,7 +260,7 @@ function PlayerContent() {
   const [selectedVideoDevice, setSelectedVideoDevice] = useState<string>('');
   const [latencyMs, setLatencyMs] = useState<number>(80);
   const [videoLatencyMs, setVideoLatencyMs] = useState<number>(0);
-  const [videoAspectRatio, setVideoAspectRatio] = useState<'portrait' | 'landscape' | 'auto'>('auto');
+  const [videoAspectRatio, setVideoAspectRatio] = useState<'portrait' | 'landscape' | 'portrait_43' | 'landscape_43' | 'auto'>('auto');
   const [reverbAmount, setReverbAmount] = useState<number>(0.05); // 5% wet mix default
   const [micVolume, setMicVolume] = useState<number>(0.7); // 70% volume default
 
@@ -276,7 +276,7 @@ function PlayerContent() {
     if (savedVideoLatency) setVideoLatencyMs(Number(savedVideoLatency));
     
     const savedAspectRatio = localStorage.getItem('vd_video_aspect_ratio');
-    if (savedAspectRatio === 'portrait' || savedAspectRatio === 'landscape' || savedAspectRatio === 'auto') {
+    if (savedAspectRatio === 'portrait' || savedAspectRatio === 'landscape' || savedAspectRatio === 'portrait_43' || savedAspectRatio === 'landscape_43' || savedAspectRatio === 'auto') {
       setVideoAspectRatio(savedAspectRatio as any);
     }
     
@@ -334,6 +334,8 @@ function PlayerContent() {
           video: {
             ...(videoAspectRatio === 'portrait' ? { width: { ideal: 480 }, height: { ideal: 853 }, aspectRatio: { ideal: 0.5625 } } : 
                 videoAspectRatio === 'landscape' ? { width: { ideal: 853 }, height: { ideal: 480 }, aspectRatio: { ideal: 1.7777 } } : 
+                videoAspectRatio === 'portrait_43' ? { width: { ideal: 640 }, height: { ideal: 853 }, aspectRatio: { ideal: 0.75 } } : 
+                videoAspectRatio === 'landscape_43' ? { width: { ideal: 853 }, height: { ideal: 640 }, aspectRatio: { ideal: 1.3333 } } : 
                 { width: { ideal: 853 }, height: { ideal: 853 } }),
             deviceId: selectedVideoDevice ? { exact: selectedVideoDevice } : undefined
           }
@@ -767,7 +769,9 @@ function PlayerContent() {
         video: recMode === 'video' ? {
           ...(videoAspectRatio === 'portrait' ? { width: { ideal: 1080 }, height: { ideal: 1920 }, aspectRatio: { ideal: 0.5625 } } : 
               videoAspectRatio === 'landscape' ? { width: { ideal: 1920 }, height: { ideal: 1080 }, aspectRatio: { ideal: 1.7777 } } : 
-              { width: { ideal: 1920 }, height: { ideal: 1920 } }),
+              videoAspectRatio === 'portrait_43' ? { width: { ideal: 1440 }, height: { ideal: 1920 }, aspectRatio: { ideal: 0.75 } } : 
+              videoAspectRatio === 'landscape_43' ? { width: { ideal: 1920 }, height: { ideal: 1440 }, aspectRatio: { ideal: 1.3333 } } : 
+              { width: { ideal: 2160 }, height: { ideal: 2160 } }),
           deviceId: selectedVideoDevice ? { exact: selectedVideoDevice } : undefined
         } : false
       });
@@ -943,7 +947,7 @@ function PlayerContent() {
                         playsInline 
                         style={{
                           height: '100%',
-                          aspectRatio: videoAspectRatio === 'portrait' ? '9/16' : videoAspectRatio === 'landscape' ? '16/9' : 'auto',
+                          aspectRatio: videoAspectRatio === 'portrait' ? '9/16' : videoAspectRatio === 'landscape' ? '16/9' : videoAspectRatio === 'portrait_43' ? '3/4' : videoAspectRatio === 'landscape_43' ? '4/3' : 'auto',
                           objectFit: 'cover'
                         }} 
                       />
@@ -962,9 +966,11 @@ function PlayerContent() {
                   <div>
                     <label style={{color: 'rgba(255,255,255,0.7)', fontSize: '0.85rem', marginBottom: '0.5rem', display: 'block'}}>Video Aspect Ratio</label>
                     <select value={videoAspectRatio} onChange={e => { setVideoAspectRatio(e.target.value as any); localStorage.setItem('vd_video_aspect_ratio', e.target.value); }} style={{width: '100%', padding: '0.75rem', borderRadius: '8px', background: 'rgba(255,255,255,0.1)', color: 'white', border: 'none', outline: 'none'}}>
-                      <option value="auto">Auto-detect (Native Camera)</option>
+                      <option value="auto">Auto-detect (Max Resolution)</option>
                       <option value="portrait">Portrait (9:16)</option>
                       <option value="landscape">Landscape (16:9)</option>
+                      <option value="portrait_43">Portrait (3:4 High-Res)</option>
+                      <option value="landscape_43">Landscape (4:3 High-Res)</option>
                     </select>
                   </div>
                 </>
@@ -1054,7 +1060,7 @@ function PlayerContent() {
         {isRecording && recordingMode === 'video' ? (
           <div className={`${styles.videoWrapper} ${isPlaying ? styles.playing : ''}`}
                style={{ 
-                 aspectRatio: videoAspectRatio === 'portrait' ? '9/16' : videoAspectRatio === 'landscape' ? '16/9' : 'auto',
+                 aspectRatio: videoAspectRatio === 'portrait' ? '9/16' : videoAspectRatio === 'landscape' ? '16/9' : videoAspectRatio === 'portrait_43' ? '3/4' : videoAspectRatio === 'landscape_43' ? '4/3' : 'auto',
                  width: videoAspectRatio === 'auto' ? 'auto' : undefined
                }}>
             <video 
