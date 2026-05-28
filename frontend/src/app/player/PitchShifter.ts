@@ -115,11 +115,11 @@ export class PitchShifter {
     const length2 = Math.floor((activeTime - 2 * this.fadeTime) * this.ctx.sampleRate);
     const halfCycle = (length1 + length2) / (2 * this.ctx.sampleRate);
     
-    this.mod1.start(t);
-    this.fade1Source.start(t);
+    this.mod1.start(t, 0);
+    this.fade1Source.start(t, 0);
     
-    this.mod2.start(t + halfCycle, halfCycle);
-    this.fade2Source.start(t + halfCycle, halfCycle);
+    this.mod2.start(t, halfCycle);
+    this.fade2Source.start(t, halfCycle);
   }
   
   private createFadeBuffer(activeTime: number, fadeTime: number) {
