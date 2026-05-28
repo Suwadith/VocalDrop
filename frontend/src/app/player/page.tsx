@@ -31,8 +31,9 @@ class ChunkPlayer {
     this.pitchShifter = new PitchShifter(this.ctx);
     
     this.instGain.connect(this.pitchShifter.input);
+    this.vocGain.connect(this.pitchShifter.input);
+    
     this.pitchShifter.output.connect(this.masterGain);
-    this.vocGain.connect(this.masterGain);
     this.masterGain.connect(this.ctx.destination);
   }
 
@@ -1166,7 +1167,7 @@ function PlayerContent() {
         </div>
 
         {/* Karaoke Pitch Slider */}
-        {karaokeMode && !isRecording && (
+        {mode === 'karaoke' && (
           <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'rgba(0,0,0,0.3)', borderRadius: '12px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
               <label style={{ color: 'rgba(255,255,255,0.9)', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
