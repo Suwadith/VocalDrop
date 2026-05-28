@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Play, Pause, Mic2, Loader2, ArrowLeft, Languages, Home, Rewind, FastForward, Circle, Video, Mic, StopCircle, Music2 } from 'lucide-react';
+import { Play, Pause, Mic2, Loader2, ArrowLeft, Languages, Home, Rewind, FastForward, Circle, Video, Mic, StopCircle, SlidersHorizontal } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { PitchShifter } from './PitchShifter';
 import { getNoSleep } from '@/utils/noSleep';
@@ -1227,7 +1227,7 @@ function PlayerContent() {
                 disabled={!karaokeReady}
                 title="Adjust Pitch"
               >
-                <Music2 size={24} />
+                <SlidersHorizontal size={22} />
               </button>
               {showPitchSlider && (
                 <>
