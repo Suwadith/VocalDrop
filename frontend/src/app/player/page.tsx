@@ -846,9 +846,57 @@ function PlayerContent() {
       wetGain.connect(destNode);
 
       const tracks: MediaStreamTrack[] = [];
+      
+      // We attach these to the media recorder object so we can clean them up in onstop
+      let animationFrameId: number | null = null;
+      let hiddenVideo: HTMLVideoElement | null = null;
+
       if (recMode === 'video') {
         const videoTrack = stream.getVideoTracks()[0];
-        if (videoTrack) tracks.push(videoTrack);
+        if (videoTrack && videoAspectRatio !== 'auto') {
+          // Determine exact target dimensions
+          let targetW = 1920;
+          let targetH = 1080;
+          if (videoAspectRatio === 'portrait') { targetW = 1080; targetH = 1920; }
+          else if (videoAspectRatio === 'portrait_43') { targetW = 1440; targetH = 1920; }
+          else if (videoAspectRatio === 'landscape') { targetW = 1920; targetH = 1080; }
+          else if (videoAspectRatio === 'landscape_43') { targetW = 1920; targetH = 1440; }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = targetW;
+          canvas.height = targetH;
+          const ctx2d = canvas.getContext('2d');
+
+          hiddenVideo = document.createElement('video');
+          hiddenVideo.srcObject = stream;
+          hiddenVideo.muted = true;
+          hiddenVideo.playsInline = true;
+          await hiddenVideo.play().catch(() => {});
+
+          const drawLoop = () => {
+            if (ctx2d && hiddenVideo && hiddenVideo.readyState >= 2) {
+              const vw = hiddenVideo.videoWidth;
+              const vh = hiddenVideo.videoHeight;
+              
+              // Simulate CSS object-fit: cover
+              const scale = Math.max(targetW / vw, targetH / vh);
+              const x = (targetW / 2) - (vw / 2) * scale;
+              const y = (targetH / 2) - (vh / 2) * scale;
+              
+              ctx2d.fillStyle = '#000';
+              ctx2d.fillRect(0, 0, targetW, targetH);
+              ctx2d.drawImage(hiddenVideo, x, y, vw * scale, vh * scale);
+            }
+            animationFrameId = requestAnimationFrame(drawLoop);
+          };
+          drawLoop();
+
+          const canvasStream = canvas.captureStream(30); // 30 FPS
+          const croppedTrack = canvasStream.getVideoTracks()[0];
+          if (croppedTrack) tracks.push(croppedTrack);
+        } else if (videoTrack) {
+          tracks.push(videoTrack);
+        }
       }
       destNode.stream.getAudioTracks().forEach((t: MediaStreamTrack) => tracks.push(t));
 
@@ -872,6 +920,12 @@ function PlayerContent() {
       };
 
       mediaRecorderRef.current.onstop = () => {
+        if (animationFrameId !== null) cancelAnimationFrame(animationFrameId);
+        if (hiddenVideo) {
+          hiddenVideo.pause();
+          hiddenVideo.srcObject = null;
+        }
+
         const blob = new Blob(recordedChunksRef.current, { type: recMode === 'video' ? 'video/webm' : 'audio/webm' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
