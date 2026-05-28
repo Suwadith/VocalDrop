@@ -707,6 +707,8 @@ function PlayerContent() {
           autoGainControl: false
         },
         video: recMode === 'video' ? {
+          width: { ideal: 1920 },
+          height: { ideal: 1920 },
           ...(videoAspectRatio === 'portrait' ? { aspectRatio: { ideal: 0.5625 } } : 
               videoAspectRatio === 'landscape' ? { aspectRatio: { ideal: 1.7777 } } : {}),
           deviceId: selectedVideoDevice ? { exact: selectedVideoDevice } : undefined
@@ -791,7 +793,15 @@ function PlayerContent() {
 
       const mixedStream = new MediaStream(tracks);
 
-      mediaRecorderRef.current = new MediaRecorder(mixedStream, { mimeType: recMode === 'video' ? 'video/webm' : 'audio/webm' });
+      const options: MediaRecorderOptions = { mimeType: recMode === 'video' ? 'video/webm' : 'audio/webm' };
+      if (recMode === 'video') {
+        options.videoBitsPerSecond = 8000000; // 8 Mbps for high quality HD
+        options.audioBitsPerSecond = 320000; // 320 kbps for audio
+      } else {
+        options.audioBitsPerSecond = 320000;
+      }
+
+      mediaRecorderRef.current = new MediaRecorder(mixedStream, options);
       recordedChunksRef.current = [];
 
       mediaRecorderRef.current.ondataavailable = (e) => {
