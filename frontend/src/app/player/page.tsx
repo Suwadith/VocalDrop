@@ -1219,99 +1219,104 @@ function PlayerContent() {
         </div>
 
         <div className={styles.buttons}>
-          {mode === 'karaoke' && (
-            <div style={{ position: 'relative' }}>
-              <button 
-                className={`${styles.karaokeBtn} ${pitchOffset !== 0 ? styles.active : ''}`} 
-                onClick={() => setShowPitchSlider(!showPitchSlider)} 
-                disabled={!karaokeReady}
-                title="Adjust Pitch"
-              >
-                <SlidersHorizontal size={22} />
+          <div className={styles.sideButtons}>
+            {mode === 'karaoke' && (
+              <div style={{ position: 'relative' }}>
+                <button 
+                  className={`${styles.karaokeBtn} ${pitchOffset !== 0 ? styles.active : ''}`} 
+                  onClick={() => setShowPitchSlider(!showPitchSlider)} 
+                  disabled={!karaokeReady}
+                  title="Adjust Pitch"
+                >
+                  <SlidersHorizontal size={22} />
+                </button>
+                {showPitchSlider && (
+                  <>
+                    <div style={{ position: 'fixed', inset: 0, zIndex: 90 }} onClick={() => setShowPitchSlider(false)} />
+                    <div style={{
+                      position: 'absolute',
+                      bottom: 'calc(100% + 1rem)',
+                      left: '0',
+                      background: 'rgba(20,20,20,0.95)',
+                      backdropFilter: 'blur(20px)',
+                      padding: '1rem',
+                      borderRadius: '16px',
+                      border: '1px solid rgba(255,255,255,0.15)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '1rem',
+                      width: '240px',
+                      boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
+                      zIndex: 100
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.9)', fontWeight: 500 }}>Key Adjust</span>
+                        <span style={{ fontSize: '0.9rem', fontVariantNumeric: 'tabular-nums', color: '#ff2d55', fontWeight: 600 }}>
+                          {pitchOffset > 0 ? '+' : ''}{pitchOffset.toFixed(1)}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)' }}>-6</span>
+                        <input
+                          type="range"
+                          min="-6"
+                          max="6"
+                          step="0.1"
+                          value={pitchOffset}
+                          onChange={(e) => setPitchOffset(parseFloat(e.target.value))}
+                          onPointerUp={(e) => chunkPlayer.current?.setPitchOffset(parseFloat(e.currentTarget.value))}
+                          style={{ flex: 1, accentColor: '#ff2d55' }}
+                        />
+                        <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)' }}>+6</span>
+                      </div>
+                      {pitchOffset !== 0 && (
+                        <button 
+                          onClick={() => { setPitchOffset(0); chunkPlayer.current?.setPitchOffset(0); }}
+                          style={{ background: 'rgba(255,45,85,0.1)', border: '1px solid rgba(255,45,85,0.3)', color: '#ff2d55', fontSize: '0.8rem', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer', fontWeight: 500 }}
+                        >
+                          Reset to Original
+                        </button>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className={styles.mainButtons}>
+            <button className={styles.skipBtn} onClick={skipBackward}>
+              <Rewind size={24} />
+            </button>
+
+            <button className={styles.playBtn} onClick={togglePlay} disabled={!karaokeReady}>
+              {isPlaying ? <Pause size={32} fill="black" /> : <Play size={32} fill="black" className="ml-1" />}
+            </button>
+
+            <button className={styles.skipBtn} onClick={skipForward}>
+              <FastForward size={24} />
+            </button>
+          </div>
+
+          <div className={styles.sideButtons} style={{ justifyContent: 'flex-end' }}>
+            {mode === 'karaoke' && (
+              <button className={`${styles.karaokeBtn} ${karaokeMode ? styles.active : ''}`} onClick={toggleKaraoke} disabled={!karaokeReady} title="Karaoke Mode">
+                <Mic2 size={24} />
               </button>
-              {showPitchSlider && (
-                <>
-                  <div style={{ position: 'fixed', inset: 0, zIndex: 90 }} onClick={() => setShowPitchSlider(false)} />
-                  <div style={{
-                    position: 'absolute',
-                    bottom: 'calc(100% + 1rem)',
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    background: 'rgba(20,20,20,0.95)',
-                    backdropFilter: 'blur(20px)',
-                    padding: '1rem',
-                    borderRadius: '16px',
-                    border: '1px solid rgba(255,255,255,0.15)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '1rem',
-                    width: '240px',
-                    boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
-                    zIndex: 100
-                  }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.9)', fontWeight: 500 }}>Key Adjust</span>
-                      <span style={{ fontSize: '0.9rem', fontVariantNumeric: 'tabular-nums', color: '#ff2d55', fontWeight: 600 }}>
-                        {pitchOffset > 0 ? '+' : ''}{pitchOffset.toFixed(1)}
-                      </span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                      <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)' }}>-6</span>
-                      <input
-                        type="range"
-                        min="-6"
-                        max="6"
-                        step="0.1"
-                        value={pitchOffset}
-                        onChange={(e) => setPitchOffset(parseFloat(e.target.value))}
-                        onPointerUp={(e) => chunkPlayer.current?.setPitchOffset(parseFloat(e.currentTarget.value))}
-                        style={{ flex: 1, accentColor: '#ff2d55' }}
-                      />
-                      <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)' }}>+6</span>
-                    </div>
-                    {pitchOffset !== 0 && (
-                      <button 
-                        onClick={() => { setPitchOffset(0); chunkPlayer.current?.setPitchOffset(0); }}
-                        style={{ background: 'rgba(255,45,85,0.1)', border: '1px solid rgba(255,45,85,0.3)', color: '#ff2d55', fontSize: '0.8rem', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer', fontWeight: 500 }}
-                      >
-                        Reset to Original
-                      </button>
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
-          )}
+            )}
 
-          {mode === 'karaoke' && (
-            <button className={`${styles.karaokeBtn} ${karaokeMode ? styles.active : ''}`} onClick={toggleKaraoke} disabled={!karaokeReady}>
-              <Mic2 size={24} />
-            </button>
-          )}
+            {mode === 'karaoke' && karaokeMode && !isRecording && (
+              <button className={`${styles.karaokeBtn} ${styles.desktopOnly}`} style={{background: 'rgba(255,255,255,0.1)'}} onClick={() => { if(isPlaying) togglePlay(); setShowRecordModal(true); }} disabled={!karaokeReady} title="Record">
+                <Circle size={24} fill="var(--apple-red)" color="var(--apple-red)" />
+              </button>
+            )}
 
-          {mode === 'karaoke' && karaokeMode && !isRecording && (
-            <button className={`${styles.karaokeBtn} ${styles.desktopOnly}`} style={{background: 'rgba(255,255,255,0.1)'}} onClick={() => { if(isPlaying) togglePlay(); setShowRecordModal(true); }} disabled={!karaokeReady}>
-              <Circle size={24} fill="var(--apple-red)" color="var(--apple-red)" />
-            </button>
-          )}
-
-          {isRecording && (
-            <button className={`${styles.karaokeBtn} ${styles.active} ${styles.desktopOnly}`} onClick={stopRecording}>
-              <StopCircle size={24} fill="white" color="var(--apple-red)" className="animate-pulse" />
-            </button>
-          )}
-          
-          <button className={styles.skipBtn} onClick={skipBackward}>
-            <Rewind size={24} />
-          </button>
-
-          <button className={styles.playBtn} onClick={togglePlay} disabled={!karaokeReady}>
-            {isPlaying ? <Pause size={32} fill="black" /> : <Play size={32} fill="black" className="ml-1" />}
-          </button>
-
-          <button className={styles.skipBtn} onClick={skipForward}>
-            <FastForward size={24} />
-          </button>
+            {isRecording && (
+              <button className={`${styles.karaokeBtn} ${styles.active} ${styles.desktopOnly}`} onClick={stopRecording} title="Stop Recording">
+                <StopCircle size={24} fill="white" color="var(--apple-red)" className="animate-pulse" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
