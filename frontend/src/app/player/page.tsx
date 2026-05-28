@@ -1219,7 +1219,7 @@ function PlayerContent() {
         </div>
 
         <div className={styles.buttons}>
-          <div className={styles.sideButtons} style={{ justifyContent: 'flex-end', paddingRight: '1.5rem' }}>
+          <div className={styles.leftSideButtons}>
             {mode === 'karaoke' && (
               <div style={{ position: 'relative' }}>
                 <button 
@@ -1298,7 +1298,7 @@ function PlayerContent() {
             </button>
           </div>
 
-          <div className={styles.sideButtons} style={{ justifyContent: 'flex-start', paddingLeft: '1.5rem' }}>
+          <div className={styles.rightSideButtons}>
             {mode === 'karaoke' && (
               <button className={`${styles.karaokeBtn} ${karaokeMode ? styles.active : ''}`} onClick={toggleKaraoke} disabled={!karaokeReady} title="Karaoke Mode">
                 <Mic2 size={24} />

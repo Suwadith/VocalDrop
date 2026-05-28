@@ -211,10 +211,20 @@
   gap: 2rem;
 }
 
-.sideButtons {
+.leftSideButtons {
   display: flex;
   align-items: center;
   gap: 1rem;
+  justify-content: flex-end;
+  padding-right: 1.5rem;
+}
+
+.rightSideButtons {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  justify-content: flex-start;
+  padding-left: 1.5rem;
 }
 
 .playBtn {
@@ -357,7 +367,22 @@
   }
 
   .buttons {
-    gap: 1rem;
+    gap: 0;
+    padding: 0 0.25rem;
+  }
+
+  .mainButtons {
+    gap: 0.5rem;
+  }
+
+  .leftSideButtons {
+    justify-content: flex-start;
+    padding-right: 0;
+  }
+
+  .rightSideButtons {
+    justify-content: flex-end;
+    padding-left: 0;
   }
 
   .playBtn {
