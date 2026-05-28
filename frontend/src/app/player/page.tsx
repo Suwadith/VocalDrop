@@ -730,9 +730,9 @@ function PlayerContent() {
       instDelayNode.delayTime.value = baseInstDelay + videoDelaySec;
       micDelayNode.delayTime.value = baseMicDelay + videoDelaySec;
       
-      // Mix instrumental slightly lower (85%) in the final recording so vocals sit nicely on top
+      // Mix instrumental slightly lower (50%) in the final recording so vocals sit nicely on top
       const instRecordingGain = ctx.createGain();
-      instRecordingGain.gain.value = 0.85;
+      instRecordingGain.gain.value = 0.50;
 
       chunkPlayer.current.masterGain.connect(instDelayNode);
       instDelayNode.connect(instRecordingGain);
