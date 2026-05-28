@@ -332,9 +332,9 @@ function PlayerContent() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: {
-            width: { ideal: 640 }, // Preview doesn't need to be 1080p
-            ...(videoAspectRatio === 'portrait' ? { aspectRatio: { ideal: 0.5625 } } : 
-                videoAspectRatio === 'landscape' ? { aspectRatio: { ideal: 1.7777 } } : {}),
+            ...(videoAspectRatio === 'portrait' ? { width: { ideal: 480 }, height: { ideal: 853 }, aspectRatio: { ideal: 0.5625 } } : 
+                videoAspectRatio === 'landscape' ? { width: { ideal: 853 }, height: { ideal: 480 }, aspectRatio: { ideal: 1.7777 } } : 
+                { width: { ideal: 853 }, height: { ideal: 853 } }),
             deviceId: selectedVideoDevice ? { exact: selectedVideoDevice } : undefined
           }
         });
@@ -758,10 +758,9 @@ function PlayerContent() {
           autoGainControl: false
         },
         video: recMode === 'video' ? {
-          width: { ideal: 1920 },
-          height: { ideal: 1920 },
-          ...(videoAspectRatio === 'portrait' ? { aspectRatio: { ideal: 0.5625 } } : 
-              videoAspectRatio === 'landscape' ? { aspectRatio: { ideal: 1.7777 } } : {}),
+          ...(videoAspectRatio === 'portrait' ? { width: { ideal: 1080 }, height: { ideal: 1920 }, aspectRatio: { ideal: 0.5625 } } : 
+              videoAspectRatio === 'landscape' ? { width: { ideal: 1920 }, height: { ideal: 1080 }, aspectRatio: { ideal: 1.7777 } } : 
+              { width: { ideal: 1920 }, height: { ideal: 1920 } }),
           deviceId: selectedVideoDevice ? { exact: selectedVideoDevice } : undefined
         } : false
       });
