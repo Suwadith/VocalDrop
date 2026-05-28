@@ -336,7 +336,7 @@ function PlayerContent() {
                 videoAspectRatio === 'landscape' ? { width: { ideal: 853 }, height: { ideal: 480 }, aspectRatio: { ideal: 1.7777 } } : 
                 videoAspectRatio === 'portrait_43' ? { width: { ideal: 640 }, height: { ideal: 853 }, aspectRatio: { ideal: 0.75 } } : 
                 videoAspectRatio === 'landscape_43' ? { width: { ideal: 853 }, height: { ideal: 640 }, aspectRatio: { ideal: 1.3333 } } : 
-                { width: { ideal: 853 }, height: { ideal: 853 } }),
+                { width: { ideal: 1920 } }),
             deviceId: selectedVideoDevice ? { exact: selectedVideoDevice } : undefined
           }
         });
@@ -771,7 +771,7 @@ function PlayerContent() {
               videoAspectRatio === 'landscape' ? { width: { ideal: 1920 }, height: { ideal: 1080 }, aspectRatio: { ideal: 1.7777 } } : 
               videoAspectRatio === 'portrait_43' ? { width: { ideal: 1440 }, height: { ideal: 1920 }, aspectRatio: { ideal: 0.75 } } : 
               videoAspectRatio === 'landscape_43' ? { width: { ideal: 1920 }, height: { ideal: 1440 }, aspectRatio: { ideal: 1.3333 } } : 
-              { width: { ideal: 2160 }, height: { ideal: 2160 } }),
+              { width: { ideal: 3840 } }),
           deviceId: selectedVideoDevice ? { exact: selectedVideoDevice } : undefined
         } : false
       });
