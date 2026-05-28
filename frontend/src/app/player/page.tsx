@@ -931,26 +931,32 @@ function PlayerContent() {
                     <label style={{color: 'rgba(255,255,255,0.7)', fontSize: '0.85rem', marginBottom: '0.5rem', display: 'block'}}>Live Camera Preview</label>
                     <div style={{
                       width: '100%', 
-                      background: 'rgba(0,0,0,0.5)', 
-                      borderRadius: '8px', 
-                      overflow: 'hidden', 
                       display: 'flex', 
                       justifyContent: 'center', 
                       alignItems: 'center',
-                      marginBottom: '1rem',
-                      height: '200px',
-                      border: '1px solid rgba(255,255,255,0.1)'
+                      marginBottom: '1rem'
                     }}>
-                      <video 
-                        ref={previewVideoRef} 
-                        muted 
-                        playsInline 
-                        style={{
-                          height: '100%',
-                          aspectRatio: videoAspectRatio === 'portrait' ? '9/16' : videoAspectRatio === 'landscape' ? '16/9' : videoAspectRatio === 'portrait_43' ? '3/4' : videoAspectRatio === 'landscape_43' ? '4/3' : 'auto',
-                          objectFit: 'cover'
-                        }} 
-                      />
+                      <div style={{
+                        background: 'rgba(0,0,0,0.5)', 
+                        borderRadius: '8px', 
+                        overflow: 'hidden', 
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        aspectRatio: videoAspectRatio === 'portrait' ? '9/16' : videoAspectRatio === 'landscape' ? '16/9' : videoAspectRatio === 'portrait_43' ? '3/4' : videoAspectRatio === 'landscape_43' ? '4/3' : 'auto',
+                        width: (videoAspectRatio === 'landscape' || videoAspectRatio === 'landscape_43') ? '100%' : 'auto',
+                        height: (videoAspectRatio === 'portrait' || videoAspectRatio === 'portrait_43' || videoAspectRatio === 'auto') ? '250px' : 'auto',
+                        maxHeight: '250px'
+                      }}>
+                        <video 
+                          ref={previewVideoRef} 
+                          muted 
+                          playsInline 
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover'
+                          }} 
+                        />
+                      </div>
                     </div>
                   </div>
                   <div>
