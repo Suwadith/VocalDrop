@@ -749,6 +749,13 @@ function PlayerContent() {
   });
   const startRecording = async (recMode: 'audio' | 'video') => {
     try {
+      // Forcefully stop the low-res preview stream to release the camera hardware lock.
+      // This allows the browser to re-initialize the camera at full 1080p resolution.
+      if (previewStreamRef.current) {
+        previewStreamRef.current.getTracks().forEach(t => t.stop());
+        previewStreamRef.current = null;
+      }
+
       localStorage.setItem('vd_recording_mode', recMode);
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
