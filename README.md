@@ -205,6 +205,9 @@ VocalDrop features an advanced, entirely in-browser **Karaoke Recording Studio**
 
 ## Screenshots & Features
 
+> [!NOTE]
+> **Screenshot Disclaimer:** The screenshots featured below are from an early production model of the application. They may not accurately represent the current UI or reflect all the latest features recently added to the platform (such as the dynamic audio visualizer, real-time pitch correction, and updated lyrics layout).
+
 <details>
 <summary><strong>🖥️ Desktop Experience</strong> <i>(Click to expand)</i></summary>
 <br>
