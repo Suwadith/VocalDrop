@@ -5,9 +5,18 @@
   overflow: hidden;
   overscroll-behavior-y: none;
   position: relative;
+  isolation: isolate;
+}
+
+.playerContainer::before {
+  content: "";
+  position: absolute;
+  inset: 0;
   background: var(--player-bg);
   backdrop-filter: blur(50px);
   -webkit-backdrop-filter: blur(50px);
+  z-index: 0;
+  pointer-events: none;
 }
 
 /* Background blur image matching cover art */
@@ -18,19 +27,18 @@
   width: 120%;
   height: 120%;
   object-fit: cover;
-  filter: blur(120px) brightness(0.5) saturate(150%);
+  filter: blur(120px) brightness(1) saturate(200%);
   z-index: -1;
   animation: pulse 10s infinite alternate;
 }
 
 @media (min-width: 769px) {
   .bgImage {
-    top: -10%;
-    left: -10%;
-    width: 120%;
-    height: 120%;
-    filter: blur(120px) brightness(0.8) saturate(150%);
-    opacity: 0.9;
+    top: -20%;
+    left: -20%;
+    width: 140%;
+    height: 140%;
+    filter: blur(80px) brightness(1.2) saturate(200%);
     animation: pulse 10s infinite alternate;
   }
 }
