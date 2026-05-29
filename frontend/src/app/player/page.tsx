@@ -6,6 +6,8 @@ import { Play, Pause, Mic2, Loader2, ArrowLeft, Languages, Home, Rewind, FastFor
 import { motion } from 'framer-motion';
 import { PitchShifter } from './PitchShifter';
 import { getNoSleep } from '@/utils/noSleep';
+import { getSharedAudioContext } from './audioContext';
+import { AudioVisualizer } from './AudioVisualizer';
 import styles from './player.module.css';
 
 class ChunkPlayer {
@@ -24,7 +26,8 @@ class ChunkPlayer {
   isBuffering: boolean = false;
   
   constructor() {
-    this.ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const shared = getSharedAudioContext();
+    this.ctx = shared.ctx!;
     this.masterGain = this.ctx.createGain();
     this.vocGain = this.ctx.createGain();
     this.instGain = this.ctx.createGain();
@@ -35,6 +38,10 @@ class ChunkPlayer {
     
     this.pitchShifter.output.connect(this.masterGain);
     this.masterGain.connect(this.ctx.destination);
+    
+    if (shared.analyser) {
+      this.masterGain.connect(shared.analyser);
+    }
   }
 
   async loadChunk(chunk: any) {
@@ -241,6 +248,7 @@ function PlayerContent() {
   const [separationLoading, setSeparationLoading] = useState(mode === 'karaoke');
 
   const originalAudio = useRef<HTMLAudioElement | null>(null);
+  const mediaSourceRef = useRef<MediaElementAudioSourceNode | null>(null);
   const chunkPlayer = useRef<ChunkPlayer | null>(null);
   
   const [showRecordModal, setShowRecordModal] = useState(false);
@@ -448,8 +456,12 @@ function PlayerContent() {
       if (activeEl) {
         const containerHeight = lyricsContainerRef.current.clientHeight;
         const elCenter = activeEl.offsetTop + (activeEl.clientHeight / 2);
+        
+        const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
+        const offset = isMobile ? 80 : 20; // Shift lyric up by 80px on mobile, 20px on desktop
+        
         lyricsContainerRef.current.scrollTo({
-          top: elCenter - (containerHeight / 2),
+          top: elCenter - (containerHeight / 2) + offset,
           behavior: 'smooth'
         });
       }
@@ -515,6 +527,17 @@ function PlayerContent() {
           
           if (mode === 'listen') {
             audio.play().then(() => setIsPlaying(true)).catch(() => console.log('Autoplay blocked'));
+          }
+
+          const shared = getSharedAudioContext();
+          if (shared.ctx && shared.analyser && !mediaSourceRef.current) {
+            try {
+              mediaSourceRef.current = shared.ctx.createMediaElementSource(audio);
+              mediaSourceRef.current.connect(shared.ctx.destination);
+              mediaSourceRef.current.connect(shared.analyser);
+            } catch (e) {
+              console.error("AudioSource error:", e);
+            }
           }
         }
         
@@ -583,6 +606,10 @@ function PlayerContent() {
       isCancelled = true;
       if (pollInterval) clearInterval(pollInterval);
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
+      if (mediaSourceRef.current) {
+        try { mediaSourceRef.current.disconnect(); } catch(e){}
+        mediaSourceRef.current = null;
+      }
       if (originalAudio.current) {
         originalAudio.current.pause();
         originalAudio.current.src = "";
@@ -681,11 +708,16 @@ function PlayerContent() {
     hasScrolled.current = true;
     
     if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
-    scrollTimeoutRef.current = setTimeout(() => {
-      if (lyricsContainerRef.current && lyricsWrapperRef.current) {
+      scrollTimeoutRef.current = setTimeout(() => {
         const container = lyricsContainerRef.current;
-        const center = container.scrollTop + container.clientHeight / 2;
+        if (!container) return;
         
+        const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
+        const offset = isMobile ? 80 : 20;
+
+        const center = container.scrollTop + (container.clientHeight / 2) - offset;
+        
+        if (!lyricsWrapperRef.current) return;
         const lines = Array.from(lyricsWrapperRef.current.children) as HTMLElement[];
         let minDiff = Infinity;
         let closestIdx = -1;
@@ -703,8 +735,8 @@ function PlayerContent() {
           const time = displayedLyrics[closestIdx].time;
           handleLyricClick(time);
         }
-      }
-      isUserScrolling.current = false;
+        
+        isUserScrolling.current = false;
     }, 400);
   };
 
@@ -806,6 +838,11 @@ function PlayerContent() {
       micSource.connect(micGainNode);
       micGainNode.connect(micDelayNode);
       micDelayNode.connect(delayedMicGain);
+
+      const shared = getSharedAudioContext();
+      if (shared.analyser) {
+        delayedMicGain.connect(shared.analyser);
+      }
 
       const convolver = ctx.createConvolver();
       const length = ctx.sampleRate * 1.5;
@@ -1148,7 +1185,7 @@ function PlayerContent() {
                     animate={{
                       scale: isActive ? 1.05 : 0.95,
                       opacity: isActive ? 1 : (isPassed ? 0.5 : 0.3),
-                      filter: isActive ? 'blur(0px)' : (isPassed ? 'blur(1px)' : 'blur(2px)'),
+                      filter: isActive ? 'blur(0px)' : 'blur(1px)',
                       color: isActive ? '#fff' : 'rgba(255, 255, 255, 0.5)'
                     }}
                     transition={{ type: "spring", stiffness: 200, damping: 20 }}
@@ -1167,8 +1204,14 @@ function PlayerContent() {
       <div className={styles.controls}>
         <div className={styles.info}>
           <div className={styles.songTitle}>{title}</div>
-          <div className={styles.songArtist}>{artist}</div>
+          <div className={styles.songArtist}>{artist || 'Unknown Artist'}</div>
         </div>
+
+        <AudioVisualizer 
+          cover={cover as string} 
+          isPlaying={isPlaying} 
+          isActive={hasStartedPlaying && (duration === 0 || currentTime < duration)} 
+        />
 
         <div className={styles.timeline}>
           <span>{formatTime(currentTime)}</span>

@@ -179,7 +179,8 @@ VocalDrop features an advanced, entirely in-browser **Karaoke Recording Studio**
 
 **How it Works:**
 1. Find a song and click the **Karaoke** toggle to generate the instrumental stems.
-2. **Real-Time Pitch Correction (Key Shifter):** Click the **Adjust Pitch** slider icon in the bottom player bar to shift the backing track's key up or down by up to 6 semitones (in 0.1 increments) using our custom Granular Synthesis Web Audio engine. The shifted track is routed perfectly into your final recording without artifacts or tempo fluctuation!
+2. **Dynamic Audio Visualizer:** As the track plays, a beautiful real-time audio visualizer dynamically bounces and reacts to the isolated stems (or your live microphone feed when recording), tinting itself with the vibrant colors of the album art using advanced canvas composite blending.
+3. **Real-Time Pitch Correction (Key Shifter):** Click the **Adjust Pitch** slider icon in the bottom player bar to shift the backing track's key up or down by up to 6 semitones (in 0.1 increments) using our custom Granular Synthesis Web Audio engine. The shifted track is routed perfectly into your final recording without artifacts or tempo fluctuation!
 3. If Romanized lyrics are available for the song's language, a **Translate/Language button** will appear in the top right corner. Click it to seamlessly toggle between the native script and the English phonetics!
 3. Click the **Record Cover** button located in the bottom player bar to open the Studio Popup.
 3. Choose your settings in the Studio:

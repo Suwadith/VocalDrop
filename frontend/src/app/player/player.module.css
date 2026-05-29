@@ -23,6 +23,18 @@
   animation: pulse 10s infinite alternate;
 }
 
+@media (min-width: 769px) {
+  .bgImage {
+    top: -10%;
+    left: -10%;
+    width: 120%;
+    height: 120%;
+    filter: blur(120px) brightness(0.8) saturate(150%);
+    opacity: 0.9;
+    animation: pulse 10s infinite alternate;
+  }
+}
+
 @keyframes pulse {
   0% { transform: scale(1); }
   100% { transform: scale(1.05); }
@@ -37,6 +49,8 @@
   align-items: center;
   padding: 2rem;
   padding-bottom: 12rem; /* Push up to avoid overlapping with bottom controls */
+  position: relative;
+  z-index: 1;
 }
 
 .coverWrapper {
@@ -81,7 +95,8 @@
   display: flex;
   flex-direction: column;
   padding: 4rem 4rem 12rem 0; /* padding-bottom: 12rem to push up to avoid overlapping with floating controls */
-  overflow: hidden;
+  position: relative;
+  z-index: 1;
 }
 
 .lyricsContainer {
