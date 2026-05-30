@@ -175,7 +175,7 @@ If you chose the Standard Deployment (Option A) and want to use the app from you
 
 ## 🎙️ Karaoke Recording Studio
 
-VocalDrop features an advanced, entirely in-browser **Karaoke Recording Studio** that allows you to record your own covers perfectly synced with the high-quality isolated instrumental tracks! It utilizes the Web Audio API to mix your live microphone feed with studio-grade effects in real-time. The studio interface is highly responsive, featuring fluid typography that adapts beautifully to any screen size, and dynamically replaces the album art with a beautiful live video feed of yourself while recording!
+VocalDrop features an advanced, entirely in-browser **Karaoke Recording Studio** that allows you to record your own covers perfectly synced with the high-quality isolated instrumental tracks! It utilizes the Web Audio API to mix your live microphone feed with studio-grade effects in real-time. The studio interface features a stunning **glassmorphism UI**, dynamic blurred backgrounds that adapt to the current song's thumbnail, and glowing Apple Music style lyrics.
 
 **How it Works:**
 1. Find a song and click the **Karaoke** toggle to generate the instrumental stems.
@@ -187,19 +187,20 @@ VocalDrop features an advanced, entirely in-browser **Karaoke Recording Studio**
    - **Mic / Camera Selection:** Pick exactly which microphone and webcam to use.
    - **Mic Input Delay Compensation:** Fix hardware latency by aligning your recorded voice perfectly with the music (defaults to `80ms`).
    - **Camera Video Delay:** Delays the entire audio mix to wait for your camera video if it is lagging behind (defaults to `0ms`).
-   - **Video Aspect Ratio:** Choose between Auto-detect, Portrait (9:16), or Landscape (4:3). *Note: The Landscape option enforces a 4:3 ratio (`3840x2880`) to bypass macOS Continuity Camera's default 1080p clamping, unlocking full native 4K+ sensor resolution!*
-   - **Microphone Volume:** Boost your voice up to 400% to ensure you cut through loud instrumental mixes (defaults to `70%`).
+   - **Video Aspect Ratio & Resolution:** Choose between Auto-detect, Portrait (9:16), or Landscape (16:9 / 4:3 depending on camera). We've also added **High Resolution** modes for both orientations. The UI will accurately display a "shrink-wrapped" live preview of the exact frame you are capturing, ensuring the preview perfectly matches the final downloaded video!
+   - **Microphone Volume:** Boost your voice up to 400% to ensure you cut through loud instrumental mixes.
    - **Studio Reverb:** Add synthetic acoustic depth (wetness) to your voice (defaults to `5%`).
-   - **Intelligent Ducking:** Automatically drops the instrumental backing track down to 50% volume in the final recording, carving out a massive pocket for your vocals to sit front-and-center.
+   - **Intelligent Ducking:** Automatically ducks the instrumental backing track down to **60% volume** (-4.4 dB) in the final recording, carving out a perfectly balanced pocket for your vocals to sit front-and-center.
 4. Choose between **Voice Only** or **Voice + Video** (requires Camera permissions).
-5. Sing along! The app mixes your voice and the music synchronously. **Pro-Tip:** You can toggle the Karaoke button off at any time during a recording to bring the original vocals back in (e.g., to let the original artist sing the chorus) without stopping your recording!
-6. When finished (or when you leave the page / explicitly click the Stop Record button), the recording will stop, and a perfectly mixed **320kbps Studio Quality** `.webm` media file will instantly download directly to your device!
+5. Sing along! The app mixes your voice and the music synchronously, actively compensating for browser microphone latency for **perfect A/V sync**. **Pro-Tip:** You can toggle the Karaoke button off at any time during a recording to bring the original vocals back in (e.g., to let the original artist sing the chorus) without stopping your recording!
+6. When finished (or when you leave the page / explicitly click the Stop Record button), the recording will stop, and a perfectly synced, **320kbps Studio Quality** `.mp4` or `.webm` media file will instantly download directly to your device!
 
 **Best Practices & Limitations:**
 - **Use Wired Headphones:** Due to the physical nature of Bluetooth, wireless headphones introduce an unavoidable audio delay (latency) between when you speak and when the computer registers it. For perfectly synced recordings where your voice matches the beat, **always use wired headphones**.
-- **Secure Contexts & Local Network Access:** Modern browsers (iOS Safari, Android Chrome, and Desktop Chrome) forcefully block microphone and camera access unless the website is loaded over a secure HTTPS connection or `localhost`. If you are accessing VocalDrop on another device over your local Wi-Fi via an IP address (e.g., `http://192.168.x.x:3000`), the recording feature **will be blocked**. To bypass this for local testing:
-  - **Option A (Fastest - Chrome Users):** Open Chrome on the secondary device, navigate to `chrome://flags/#unsafely-treat-insecure-origin-as-secure`, enable the flag, and add your exact URL (e.g., `http://192.168.x.x:3000`) to the text box. Relaunch Chrome.
-  - **Option B (Universal - ngrok):** Run a local tunnel like `ngrok http 3000` on your main computer. This generates a secure `https://[random].ngrok.app` link that you can open on any device (including iPhones) to grant full microphone/camera access.
+- **Secure Contexts & Remote Access (Cloudflare Tunnels):** Modern browsers (iOS Safari, Android Chrome, and Desktop Chrome) forcefully block microphone and camera access unless the website is loaded over a secure HTTPS connection or `localhost`. 
+  - To record on your phone seamlessly without worrying about local IP addresses, we highly recommend using a free **Cloudflare Tunnel**.
+  - Simply install `cloudflared` and run: `cloudflared tunnel --url http://localhost:3000` on your computer. 
+  - This generates a secure `https://[random].trycloudflare.com` link. Open this exact link on your iPhone or Android, and you can instantly record studio-quality videos from anywhere—even if you aren't connected to the same Wi-Fi network!
 
 ---
 
