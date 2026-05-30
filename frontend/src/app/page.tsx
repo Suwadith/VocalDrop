@@ -68,6 +68,7 @@ export default function Home() {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
   const [isNavigating, setIsNavigating] = useState(false);
   const [listenMode, setListenMode] = useState(true);
   const router = useRouter();
@@ -99,14 +100,22 @@ export default function Home() {
     if (!query.trim()) return;
 
     setLoading(true);
+    setErrorMsg('');
     try {
       const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+      
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`HTTP ${res.status}: ${text.substring(0, 100)}`);
+      }
+      
       const data = await res.json();
       setResults(data);
       sessionStorage.setItem('searchQuery', query);
       sessionStorage.setItem('searchResults', JSON.stringify(data));
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      setErrorMsg(err.message || 'An error occurred while searching');
     }
     setLoading(false);
   };
@@ -200,6 +209,11 @@ export default function Home() {
       </div>
 
       {loading && !isNavigating && <div className={styles.loading}>Searching...</div>}
+      {errorMsg && !loading && (
+        <div style={{ color: '#ff4d4d', marginTop: '2rem', padding: '1rem', background: 'rgba(255, 0, 0, 0.1)', borderRadius: '8px', border: '1px solid #ff4d4d' }}>
+          <strong>Error:</strong> {errorMsg}
+        </div>
+      )}
       {isNavigating && <div className={styles.loading}>Opening player...</div>}
 
       {!isNavigating && (

@@ -5,20 +5,29 @@ import re
 import warnings
 from tamil_translite import translite
 from collections import defaultdict
-from fastapi import FastAPI, BackgroundTasks, HTTPException
+from fastapi import FastAPI, BackgroundTasks, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+import uuid
 from pydantic import BaseModel
 from ytmusicapi import YTMusic
 import yt_dlp
 import syncedlyrics
 from separator import run_chunked_separation, set_priority_target, update_activity
 import uroman as ur
+from fastapi.exceptions import RequestValidationError
+from fastapi import Request
+from fastapi.responses import JSONResponse
 
 # Initialize the Universal Romanizer once
 uroman_client = ur.Uroman()
 
 app = FastAPI()
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    print(f"Validation error: {exc}")
+    return JSONResponse(status_code=422, content={"detail": exc.errors()})
 
 # Allow CORS for Next.js frontend
 app.add_middleware(
@@ -251,6 +260,132 @@ def get_chunk_audio(video_id: str, filename: str):
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="File not found")
     return FileResponse(file_path)
+
+@app.post("/api/mix")
+async def mix_recording(
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...),
+    video_id: str = Form(...),
+    start_time: float = Form(...),
+    mic_volume: float = Form(...),
+    reverb: float = Form(...)
+):
+    try:
+        from pydub import AudioSegment
+        import subprocess
+
+        chunks_dir = os.path.join(TEMP_DIR, video_id)
+        stitched_inst = None
+        
+        # Stitch separated chunks if they exist
+        if os.path.exists(chunks_dir):
+            i = 0
+            while True:
+                f = os.path.join(chunks_dir, f"chunk_{i}_instrumental.wav")
+                if not os.path.exists(f):
+                    break
+                chunk_audio = AudioSegment.from_file(f)
+                if stitched_inst is None:
+                    stitched_inst = chunk_audio
+                else:
+                    stitched_inst = stitched_inst.append(chunk_audio, crossfade=1000)
+                i += 1
+                
+        # If no chunks, fallback to original full audio
+        if stitched_inst is None:
+            original_audio = os.path.join(TEMP_DIR, f"{video_id}.wav")
+            if os.path.exists(original_audio):
+                stitched_inst = AudioSegment.from_file(original_audio)
+            else:
+                raise HTTPException(500, "Audio not found")
+        
+        # Calculate offset
+        # Compensate for Web Audio API MediaRecorder processing delay (~40ms)
+        WEB_AUDIO_LATENCY_MS = 40
+        inst_start_ms = int(start_time * 1000) - WEB_AUDIO_LATENCY_MS
+        
+        if inst_start_ms >= 0:
+            sliced_inst = stitched_inst[inst_start_ms:]
+        else:
+            silence = AudioSegment.silent(duration=-inst_start_ms)
+            sliced_inst = silence + stitched_inst
+            
+        unique_id = uuid.uuid4().hex
+        inst_path = os.path.join(TEMP_DIR, f"inst_{unique_id}.wav")
+        
+        ext = ".webm" if "webm" in file.filename else ".mp4"
+        vocal_path = os.path.join(TEMP_DIR, f"vocal_{unique_id}{ext}")
+        out_path = os.path.join(TEMP_DIR, f"mixed_{unique_id}{ext}")
+        
+        clean_vocal_path = os.path.join(TEMP_DIR, f"clean_vocal_{unique_id}.wav")
+        mixed_audio_path = os.path.join(TEMP_DIR, f"mixed_audio_{unique_id}.wav")
+        
+        def cleanup():
+            for p in [inst_path, vocal_path, out_path, clean_vocal_path, mixed_audio_path]:
+                if os.path.exists(p):
+                    try:
+                        os.remove(p)
+                    except:
+                        pass
+                        
+        # background_tasks.add_task(cleanup)
+
+        sliced_inst.export(inst_path, format="wav")
+        
+        with open(vocal_path, "wb") as f:
+            f.write(await file.read())
+            
+        # 1. Process vocal with FFmpeg to apply volume and reverb, ensuring we extract pure synced audio
+        vocal_filter = f"volume={mic_volume}"
+        if reverb > 0:
+            decay = 0.4 * reverb
+            vocal_filter += f",aecho=1.0:1.0:60:{decay}"
+            
+        subprocess.run([
+            "ffmpeg", "-y", 
+            "-i", vocal_path,
+            "-af", vocal_filter,
+            clean_vocal_path
+        ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        
+        # 2. Load processed vocal and instrumental into pydub
+        processed_vocal = AudioSegment.from_file(clean_vocal_path)
+        
+        # Lower instrumental volume slightly so vocals stand out
+        sliced_inst = sliced_inst - 4.4
+        
+        # 3. Overlay them perfectly
+        mixed_audio = processed_vocal.overlay(sliced_inst)
+        
+        mixed_audio.export(mixed_audio_path, format="wav")
+        
+        out_path = os.path.join(TEMP_DIR, f"mixed_{unique_id}.mp4")
+        
+        # 4. Mux the mixed audio back with the original video, transcoded to mp4 for universal support
+        cmd = [
+            "ffmpeg", "-y",
+            "-i", vocal_path,
+            "-i", mixed_audio_path,
+            "-filter_complex", "[0:v]setpts=PTS-STARTPTS,scale=trunc(iw/2)*2:trunc(ih/2)*2[v_out]",
+            "-map", "[v_out]",
+            "-map", "1:a",
+            "-c:v", "libx264",
+            "-preset", "fast",
+            "-profile:v", "main",
+            "-r", "30",
+            "-pix_fmt", "yuv420p",
+            "-c:a", "aac", "-b:a", "320k",
+            "-movflags", "+faststart",
+            out_path
+        ]
+        
+        subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        
+        return FileResponse(out_path, media_type="video/mp4")
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn

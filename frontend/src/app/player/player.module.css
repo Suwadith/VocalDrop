@@ -41,6 +41,27 @@
     filter: blur(80px) brightness(1.2) saturate(200%);
     animation: pulse 10s infinite alternate;
   }
+  .controls {
+    bottom: 1.5rem;
+    padding: 0.8rem 1.2rem;
+    max-width: 500px;
+  }
+  .info {
+    margin-bottom: 0.4rem;
+  }
+  .songTitle {
+    font-size: 1.2rem;
+    margin-bottom: 0;
+  }
+  .songArtist {
+    font-size: 0.9rem;
+  }
+  .timeline {
+    margin-bottom: 0.6rem;
+  }
+  .mainButtons {
+    gap: 1rem;
+  }
 }
 
 @keyframes pulse {
@@ -75,19 +96,30 @@
   transform: scale(1.02);
 }
 
-.videoWrapper {
-  height: min(50vh, 500px);
-  max-width: 90vw;
-  border-radius: 20px;
-  box-shadow: 0 30px 60px rgba(0,0,0,0.6);
-  overflow: hidden;
+.playerVideoWrapper {
+  aspect-ratio: 1;
+  width: clamp(250px, 45vh, 450px);
+  max-width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
   margin-bottom: 3rem;
   transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.playerVideoWrapper video {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: 20px;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.5);
   border: 2px solid rgba(255,255,255,0.2);
   background: #000;
 }
 
-.videoWrapper.playing {
+.playerVideoWrapper.playing {
   transform: scale(1.02);
 }
 
@@ -105,6 +137,46 @@
   padding: 4rem 4rem 12rem 0; /* padding-bottom: 12rem to push up to avoid overlapping with floating controls */
   position: relative;
   z-index: 1;
+}
+
+.modalRightPane {
+  justify-content: center;
+  padding: 0 4rem;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.modalContentWrapper {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  padding: 0 2rem;
+  z-index: 2;
+  gap: 2rem;
+}
+.modalInnerContainer {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 4rem;
+  width: 100%;
+  max-width: 1000px;
+}
+.modalVideoSide, .modalSettingsSide {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+.modalVideoSide {
+  align-items: flex-end;
+}
+.modalSettingsSide {
+  align-items: flex-start;
 }
 
 .lyricsContainer {
@@ -147,8 +219,8 @@
   left: 50%;
   transform: translateX(-50%);
   width: 90%;
-  max-width: 800px;
-  padding: 1.5rem 3rem;
+  max-width: 600px; /* Reduced from 800px to hug the timeline tighter */
+  padding: 1.25rem 1.5rem; /* Reduced horizontal padding */
   background: rgba(0,0,0,0.4);
   backdrop-filter: blur(40px);
   -webkit-backdrop-filter: blur(40px);
@@ -163,13 +235,13 @@
 
 .info {
   text-align: center;
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.75rem;
 }
 
 .songTitle {
   font-size: clamp(1.2rem, 2.5vw, 2rem);
   font-weight: 700;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.1rem;
 }
 
 .songArtist {
@@ -183,7 +255,7 @@
   display: flex;
   align-items: center;
   gap: 1rem;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
   font-variant-numeric: tabular-nums;
   font-size: 0.9rem;
   color: rgba(255,255,255,0.7);
@@ -231,7 +303,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 2rem;
+  gap: 1.5rem;
 }
 
 .leftSideButtons {
@@ -334,9 +406,14 @@
     margin-bottom: 0;
   }
 
-  .videoWrapper {
-    height: min(40vh, 300px);
+  .playerVideoWrapper {
+    width: clamp(100px, 25vh, 180px);
     margin-bottom: 0;
+    height: auto;
+  }
+
+  .playerVideoWrapper video {
+    max-height: 100%;
   }
 
   .rightPane {
@@ -348,6 +425,31 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+  }
+  
+  .modalRightPane {
+    justify-content: flex-start;
+    padding: 1rem;
+    padding-bottom: 3rem;
+  }
+  .modalContentWrapper {
+    align-items: center;
+    padding-top: 2rem;
+    padding-bottom: 4rem;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    gap: 1.5rem;
+  }
+  .modalInnerContainer {
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .modalVideoSide {
+    align-items: center;
+  }
+  .modalSettingsSide {
+    align-items: center;
   }
   
   .lyricsContainer {
@@ -385,32 +487,51 @@
     margin-bottom: 0.5rem;
   }
 
-  .timeline {
-    margin-bottom: 0.75rem;
-  }
-
   .buttons {
-    gap: 0;
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
     padding: 0 0.25rem;
+    gap: 0;
   }
 
   .mainButtons {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     gap: 0.5rem;
+    flex: 0 0 auto;
   }
 
   .leftSideButtons {
+    display: flex;
     justify-content: flex-start;
+    align-items: center;
+    flex: 1;
     padding-right: 0;
+    gap: 0.25rem;
   }
 
   .rightSideButtons {
+    display: flex;
     justify-content: flex-end;
+    align-items: center;
+    flex: 1;
     padding-left: 0;
+    gap: 0.25rem;
   }
 
   .playBtn {
-    width: 54px;
-    height: 54px;
+    width: 48px;
+    height: 48px;
+  }
+  
+  .skipBtn, .karaokeBtn {
+    width: 40px;
+    height: 40px;
+    padding: 0.5rem;
   }
 }
 
@@ -438,4 +559,55 @@
   cursor: not-allowed;
 }
 
+.recordModal {
+  background: rgba(0,0,0,0.65);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  padding: 2rem;
+  border-radius: 30px;
+  text-align: center;
+  max-width: 900px;
+  width: 90%;
+  border: 1px solid rgba(255,255,255,0.1);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+  max-height: 90vh;
+  overflow-y: auto;
+}
 
+.closeBtn {
+  position: absolute;
+  top: 1.5rem;
+  right: 1.5rem;
+  background: rgba(255,255,255,0.1);
+  border: none;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 10;
+}
+
+.closeBtn:hover {
+  background: rgba(255,255,255,0.2);
+  transform: scale(1.1);
+}
+
+.recordModalGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  text-align: left;
+  margin-bottom: 1.5rem;
+}
+
+@media (max-width: 768px) {
+  .recordModalGrid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+}

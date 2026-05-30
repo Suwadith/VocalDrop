@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Play, Pause, Mic2, Loader2, ArrowLeft, Languages, Home, Rewind, FastForward, Circle, Video, Mic, StopCircle, SlidersHorizontal } from 'lucide-react';
+import { Play, Pause, Mic2, Loader2, ArrowLeft, Languages, Home, Rewind, FastForward, Circle, Video, Mic, StopCircle, SlidersHorizontal, X, Download } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { PitchShifter } from './PitchShifter';
 import { getNoSleep } from '@/utils/noSleep';
@@ -101,6 +101,10 @@ class ChunkPlayer {
       try { s.inst.stop(); s.voc.stop(); } catch(e){}
     });
     this.scheduledSources = [];
+  }
+
+  setVolume(val: number) {
+    this.masterGain.gain.setTargetAtTime(val, this.ctx.currentTime, 0.05);
   }
 
   seek(time: number) {
@@ -253,21 +257,39 @@ function PlayerContent() {
   
   const [showRecordModal, setShowRecordModal] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [showSyncModal, setShowSyncModal] = useState(false);
+  const [recordedBlobUrl, setRecordedBlobUrl] = useState<string | null>(null);
+  const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isMixing, setIsMixing] = useState(false);
+  const [syncTime, setSyncTime] = useState(0);
+  const [syncDuration, setSyncDuration] = useState(0);
+  const [hasPlayedPreview, setHasPlayedPreview] = useState(false);
+  const [isHoveringVideo, setIsHoveringVideo] = useState(false);
   const [recordingMode, setRecordingMode] = useState<'audio' | 'video' | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
+  const recordingStartTimeRef = useRef<number>(0);
   const videoStreamRef = useRef<MediaStream | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
   const previewVideoRef = useRef<HTMLVideoElement | null>(null);
   const previewStreamRef = useRef<MediaStream | null>(null);
 
+  const vocalBufferRef = useRef<AudioBuffer | null>(null);
+  const vocalSourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const vocalGainNodeRef = useRef<GainNode | null>(null);
+  const vocalDelayNodeRef = useRef<DelayNode | null>(null);
+  const vocalFeedbackNodeRef = useRef<GainNode | null>(null);
+  const vocalAudioCtxRef = useRef<AudioContext | null>(null);
+  const vocalStartTimeRef = useRef<number>(0);
+  const vocalOffsetRef = useRef<number>(0);
+
   const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([]);
   const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
   const [selectedAudioDevice, setSelectedAudioDevice] = useState<string>('');
   const [selectedVideoDevice, setSelectedVideoDevice] = useState<string>('');
-  const [latencyMs, setLatencyMs] = useState<number>(80);
-  const [videoLatencyMs, setVideoLatencyMs] = useState<number>(0);
+  const [micChannels, setMicChannels] = useState<'mono' | 'stereo'>('mono');
   const [videoAspectRatio, setVideoAspectRatio] = useState<'portrait' | 'landscape' | 'portrait_43' | 'landscape_43' | 'auto'>('auto');
   const [reverbAmount, setReverbAmount] = useState<number>(0.05);
   const [micVolume, setMicVolume] = useState<number>(0.7);
@@ -277,12 +299,6 @@ function PlayerContent() {
   useEffect(() => {
     const savedMode = localStorage.getItem('vd_recording_mode');
     if (savedMode === 'audio' || savedMode === 'video') setRecordingMode(savedMode);
-    
-    const savedLatency = localStorage.getItem('vd_latency_ms');
-    if (savedLatency) setLatencyMs(Number(savedLatency));
-    
-    const savedVideoLatency = localStorage.getItem('vd_video_latency_ms');
-    if (savedVideoLatency) setVideoLatencyMs(Number(savedVideoLatency));
     
     const savedAspectRatio = localStorage.getItem('vd_video_aspect_ratio');
     if (savedAspectRatio === 'portrait' || savedAspectRatio === 'landscape' || savedAspectRatio === 'portrait_43' || savedAspectRatio === 'landscape_43' || savedAspectRatio === 'auto') {
@@ -294,6 +310,9 @@ function PlayerContent() {
     
     const savedVolume = localStorage.getItem('vd_mic_volume');
     if (savedVolume) setMicVolume(Number(savedVolume));
+    
+    const savedMicChannels = localStorage.getItem('vd_mic_channels');
+    if (savedMicChannels === 'mono' || savedMicChannels === 'stereo') setMicChannels(savedMicChannels);
   }, []);
 
   useEffect(() => {
@@ -466,7 +485,7 @@ function PlayerContent() {
         });
       }
     }
-  }, [currentLine, displayedLyrics.length]);
+  }, [currentLine, displayedLyrics.length, isRecording, showRecordModal, showSyncModal]);
 
   useEffect(() => {
     if (!id) {
@@ -669,6 +688,7 @@ function PlayerContent() {
   };
 
   const performSeek = (newTime: number) => {
+    if (isRecording) return;
     isScrubbingTimeline.current = false;
     if (activeAudio.current === 'original' && originalAudio.current) {
       originalAudio.current.currentTime = newTime;
@@ -681,6 +701,7 @@ function PlayerContent() {
   };
 
   const handleLyricClick = (time: number) => {
+    if (isRecording) return;
     isUserScrolling.current = false;
     if (activeAudio.current === 'original' && originalAudio.current) {
       originalAudio.current.currentTime = time;
@@ -693,6 +714,7 @@ function PlayerContent() {
   const hasScrolled = useRef(false);
 
   const handleLyricsTouchStart = () => {
+    if (isRecording) return;
     isUserScrolling.current = true;
     hasScrolled.current = false;
   };
@@ -704,6 +726,7 @@ function PlayerContent() {
   };
 
   const handleLyricsScroll = () => {
+    if (isRecording) return;
     if (!isUserScrolling.current) return;
     hasScrolled.current = true;
     
@@ -741,6 +764,7 @@ function PlayerContent() {
   };
 
   const skipBackward = () => {
+    if (isRecording) return;
     const newTime = Math.max(0, currentTime - 10);
     if (activeAudio.current === 'original' && originalAudio.current) {
       originalAudio.current.currentTime = newTime;
@@ -751,6 +775,7 @@ function PlayerContent() {
   };
 
   const skipForward = () => {
+    if (isRecording) return;
     const newTime = Math.min(duration, currentTime + 10);
     if (activeAudio.current === 'original' && originalAudio.current) {
       originalAudio.current.currentTime = newTime;
@@ -787,14 +812,15 @@ function PlayerContent() {
           ...(selectedAudioDevice ? { deviceId: { exact: selectedAudioDevice } } : {}),
           echoCancellation: false,
           noiseSuppression: false,
-          autoGainControl: false
+          autoGainControl: false,
+          channelCount: micChannels === 'mono' ? 1 : 2
         },
         video: recMode === 'video' ? {
-          ...(videoAspectRatio === 'portrait' ? { width: { ideal: 1080 }, height: { ideal: 1920 }, aspectRatio: { ideal: 0.5625 } } : 
-              videoAspectRatio === 'landscape' ? { width: { ideal: 1920 }, height: { ideal: 1080 }, aspectRatio: { ideal: 1.7777 } } : 
-              videoAspectRatio === 'portrait_43' ? { width: { ideal: 1440 }, height: { ideal: 1920 }, aspectRatio: { ideal: 0.75 } } : 
-              videoAspectRatio === 'landscape_43' ? { width: { ideal: 1920 }, height: { ideal: 1440 }, aspectRatio: { ideal: 1.3333 } } : 
-              { width: { ideal: 3840 }, height: { ideal: 2880 } }),
+          ...(videoAspectRatio === 'portrait' ? { width: { ideal: 480 }, height: { ideal: 853 }, aspectRatio: { ideal: 0.5625 } } : 
+              videoAspectRatio === 'landscape' ? { width: { ideal: 853 }, height: { ideal: 480 }, aspectRatio: { ideal: 1.7777 } } : 
+              videoAspectRatio === 'portrait_43' ? { width: { ideal: 640 }, height: { ideal: 853 }, aspectRatio: { ideal: 0.75 } } : 
+              videoAspectRatio === 'landscape_43' ? { width: { ideal: 853 }, height: { ideal: 640 }, aspectRatio: { ideal: 1.3333 } } : 
+              { width: { ideal: 1920 }, height: { ideal: 1440 } }),
           deviceId: selectedVideoDevice ? { exact: selectedVideoDevice } : undefined
         } : false
       });
@@ -807,41 +833,27 @@ function PlayerContent() {
       const ctx = chunkPlayer.current.ctx;
       const destNode = ctx.createMediaStreamDestination();
       
-      const instDelayNode = ctx.createDelay(3.0);
-      const micDelayNode = ctx.createDelay(3.0);
-      
-      let baseInstDelay = 0;
-      let baseMicDelay = 0;
-
-      if (latencyMs >= 0) {
-        baseInstDelay = latencyMs / 1000.0;
-      } else {
-        baseMicDelay = Math.abs(latencyMs) / 1000.0;
-      }
-
-      const videoDelaySec = (recMode === 'video' ? videoLatencyMs : 0) / 1000.0;
-      instDelayNode.delayTime.value = baseInstDelay + videoDelaySec;
-      micDelayNode.delayTime.value = baseMicDelay + videoDelaySec;
-      
-      const instRecordingGain = ctx.createGain();
-      instRecordingGain.gain.value = 0.50;
-
-      chunkPlayer.current.masterGain.connect(instDelayNode);
-      instDelayNode.connect(instRecordingGain);
-      instRecordingGain.connect(destNode);
+      // We only capture the vocals to the destNode. The instrumental is played locally 
+      // but NOT recorded. We will mix it server-side.
       
       const micSource = ctx.createMediaStreamSource(stream);
       const micGainNode = ctx.createGain();
       micGainNode.gain.value = micVolume;
       
-      const delayedMicGain = ctx.createGain();
-      micSource.connect(micGainNode);
-      micGainNode.connect(micDelayNode);
-      micDelayNode.connect(delayedMicGain);
+      if (micChannels === 'mono') {
+        const splitter = ctx.createChannelSplitter(2);
+        micSource.connect(splitter);
+        splitter.connect(micGainNode, 0); // Extract Left channel only. Safely upmixes to L/R equally at destNode.
+      } else {
+        micSource.connect(micGainNode);
+      }
+      
+      const processedMicGain = ctx.createGain();
+      micGainNode.connect(processedMicGain);
 
       const shared = getSharedAudioContext();
       if (shared.analyser) {
-        delayedMicGain.connect(shared.analyser);
+        processedMicGain.connect(shared.analyser);
       }
 
       const convolver = ctx.createConvolver();
@@ -864,10 +876,10 @@ function PlayerContent() {
       const wetGain = ctx.createGain();
       wetGain.gain.value = reverbAmount;
 
-      delayedMicGain.connect(dryGain);
+      processedMicGain.connect(dryGain);
       dryGain.connect(destNode);
 
-      delayedMicGain.connect(convolver);
+      processedMicGain.connect(convolver);
       convolver.connect(wetGain);
       wetGain.connect(destNode);
 
@@ -885,6 +897,13 @@ function PlayerContent() {
           else if (videoAspectRatio === 'landscape') { targetW = 1920; targetH = 1080; }
           else if (videoAspectRatio === 'landscape_43') { targetW = 1920; targetH = 1440; }
 
+          // Performance Optimization for Mobile Devices
+          const isMobile = window.innerWidth <= 768 || /Mobi|Android|iPhone/i.test(navigator.userAgent);
+          if (isMobile) {
+            targetW = Math.round(targetW * 0.666);
+            targetH = Math.round(targetH * 0.666);
+          }
+
           const canvas = document.createElement('canvas');
           canvas.width = targetW;
           canvas.height = targetH;
@@ -896,7 +915,14 @@ function PlayerContent() {
           hiddenVideo.playsInline = true;
           await hiddenVideo.play().catch(() => {});
 
-          const drawLoop = () => {
+          let lastDrawTime = 0;
+          const frameInterval = 1000 / 30; // Target 30fps
+
+          const drawLoop = (timestamp: number) => {
+            animationFrameId = requestAnimationFrame(drawLoop);
+            if (timestamp - lastDrawTime < frameInterval) return;
+            lastDrawTime = timestamp;
+
             if (ctx2d && hiddenVideo && hiddenVideo.readyState >= 2) {
               const vw = hiddenVideo.videoWidth;
               const vh = hiddenVideo.videoHeight;
@@ -907,9 +933,8 @@ function PlayerContent() {
               ctx2d.fillRect(0, 0, targetW, targetH);
               ctx2d.drawImage(hiddenVideo, x, y, vw * scale, vh * scale);
             }
-            animationFrameId = requestAnimationFrame(drawLoop);
           };
-          drawLoop();
+          animationFrameId = requestAnimationFrame(drawLoop);
 
           const canvasStream = canvas.captureStream(30);
           const croppedTrack = canvasStream.getVideoTracks()[0];
@@ -921,11 +946,22 @@ function PlayerContent() {
       destNode.stream.getAudioTracks().forEach((t: MediaStreamTrack) => tracks.push(t));
 
       const mixedStream = new MediaStream(tracks);
-      const options: MediaRecorderOptions = { mimeType: recMode === 'video' ? 'video/webm' : 'audio/webm' };
-      if (recMode === 'video') {
+      let options: MediaRecorderOptions = { mimeType: recMode === 'video' ? 'video/webm' : 'audio/webm' };
+      if (!MediaRecorder.isTypeSupported(options.mimeType!)) {
+        if (recMode === 'video' && MediaRecorder.isTypeSupported('video/mp4')) {
+          options.mimeType = 'video/mp4';
+        } else if (recMode === 'audio' && MediaRecorder.isTypeSupported('audio/mp4')) {
+          options.mimeType = 'audio/mp4';
+        } else {
+          // Fallback to default browser type
+          options = {};
+        }
+      }
+      
+      if (options.mimeType && recMode === 'video') {
         options.videoBitsPerSecond = 8000000;
         options.audioBitsPerSecond = 320000;
-      } else {
+      } else if (options.mimeType) {
         options.audioBitsPerSecond = 320000;
       }
 
@@ -944,17 +980,20 @@ function PlayerContent() {
           hiddenVideo.pause();
           hiddenVideo.srcObject = null;
         }
-        const blob = new Blob(recordedChunksRef.current, { type: recMode === 'video' ? 'video/webm' : 'audio/webm' });
+        
+        // Use the actual mime type the recorder used
+        const actualMimeType = mediaRecorderRef.current?.mimeType || (recMode === 'video' ? 'video/mp4' : 'audio/mp4');
+        const blob = new Blob(recordedChunksRef.current, { type: actualMimeType });
         const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `VocalDrop-Performance-${Date.now()}.${recMode === 'video' ? 'webm' : 'webm'}`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        
+        setRecordedBlob(blob);
+        setRecordedBlobUrl(url);
+        setShowSyncModal(true);
       };
 
+      recordingStartTimeRef.current = activeAudio.current === 'stems' 
+        ? (chunkPlayer.current?.getCurrentTime() || 0)
+        : (originalAudio.current?.currentTime || 0);
       mediaRecorderRef.current.start();
       
       if (!isPlaying) {
@@ -967,125 +1006,551 @@ function PlayerContent() {
     }
   };
 
+  useEffect(() => {
+    if (showSyncModal && recordedBlob) {
+      const loadVocal = async () => {
+        try {
+          const arrayBuffer = await recordedBlob.arrayBuffer();
+          const shared = getSharedAudioContext();
+          const ctx = shared.ctx!;
+          vocalAudioCtxRef.current = ctx;
+          const buffer = await ctx.decodeAudioData(arrayBuffer);
+          vocalBufferRef.current = buffer;
+          
+          const gainNode = ctx.createGain();
+          vocalGainNodeRef.current = gainNode;
+          
+          const delayNode = ctx.createDelay(2.0);
+          delayNode.delayTime.value = 0.05;
+          vocalDelayNodeRef.current = delayNode;
+          
+          const feedbackNode = ctx.createGain();
+          vocalFeedbackNodeRef.current = feedbackNode;
+          
+          gainNode.connect(ctx.destination);
+          gainNode.connect(delayNode);
+          delayNode.connect(feedbackNode);
+          feedbackNode.connect(delayNode);
+          feedbackNode.connect(ctx.destination);
+          
+          gainNode.gain.value = micVolume;
+          feedbackNode.gain.value = reverbAmount > 0 ? 0.02 + (reverbAmount * 0.8) : 0;
+        } catch (err) {
+          console.error("Failed to decode vocal buffer", err);
+        }
+      };
+      loadVocal();
+    } else {
+       vocalAudioCtxRef.current = null;
+       vocalBufferRef.current = null;
+       vocalSourceRef.current = null;
+       vocalGainNodeRef.current = null;
+       vocalDelayNodeRef.current = null;
+       vocalFeedbackNodeRef.current = null;
+    }
+  }, [showSyncModal, recordedBlob]);
+
+  useEffect(() => {
+    if (showSyncModal) {
+      if (chunkPlayer.current) chunkPlayer.current.setVolume(0.6);
+      if (originalAudio.current) originalAudio.current.volume = 0.6;
+    } else {
+      if (chunkPlayer.current) chunkPlayer.current.setVolume(1.0);
+      if (originalAudio.current) originalAudio.current.volume = 1.0;
+    }
+  }, [showSyncModal]);
+
+  useEffect(() => {
+    if (vocalAudioCtxRef.current) {
+        if (vocalGainNodeRef.current) {
+            vocalGainNodeRef.current.gain.setTargetAtTime(micVolume, vocalAudioCtxRef.current.currentTime, 0.05);
+        }
+        if (vocalFeedbackNodeRef.current) {
+            const fbVal = reverbAmount > 0 ? 0.02 + (reverbAmount * 0.8) : 0;
+            vocalFeedbackNodeRef.current.gain.setTargetAtTime(fbVal, vocalAudioCtxRef.current.currentTime, 0.05);
+        }
+    }
+  }, [micVolume, reverbAmount]);
+
+  const stopVocal = () => {
+    if (vocalSourceRef.current) {
+      try { vocalSourceRef.current.stop(); } catch(e){}
+      vocalSourceRef.current.disconnect();
+      vocalSourceRef.current = null;
+    }
+  };
+
+  const playVocal = (timeOffset: number) => {
+    if (!vocalBufferRef.current || !vocalAudioCtxRef.current) return;
+    
+    // Resume context if needed
+    if (vocalAudioCtxRef.current.state === 'suspended') {
+      vocalAudioCtxRef.current.resume();
+    }
+    
+    stopVocal();
+    const source = vocalAudioCtxRef.current.createBufferSource();
+    source.buffer = vocalBufferRef.current;
+    source.connect(vocalGainNodeRef.current!);
+    
+    // We now compensate for latency by shifting the instrumental back, so video and vocals align.
+    const vocalOffset = timeOffset;
+    
+    if (vocalOffset < 0) {
+       source.start(vocalAudioCtxRef.current.currentTime + Math.abs(vocalOffset), 0);
+    } else {
+       source.start(0, vocalOffset);
+    }
+    
+    vocalSourceRef.current = source;
+  };
+
   const stopRecording = () => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop();
     }
+    
+    // Calculate precise recording duration
+    const endTime = activeAudio.current === 'stems' 
+      ? (chunkPlayer.current?.getCurrentTime() || 0)
+      : (originalAudio.current?.currentTime || 0);
+    const calculatedDuration = Math.max(0, endTime - recordingStartTimeRef.current);
+    if (calculatedDuration > 0) {
+      setSyncDuration(calculatedDuration);
+    }
+    setHasPlayedPreview(false);
+
     if (videoStreamRef.current) {
       videoStreamRef.current.getTracks().forEach(t => t.stop());
     }
     setIsRecording(false);
     setRecordingMode(null);
+    if (isPlaying) togglePlay();
+    if (chunkPlayer.current) {
+      chunkPlayer.current.pause();
+    }
   };
 
+
+  const handleSaveRecording = async () => {
+    if (!recordedBlob) return;
+    setIsSaving(true);
+    
+    try {
+      const formData = new FormData();
+      formData.append('file', recordedBlob, 'recording.webm');
+      formData.append('video_id', searchParams.get('id') || searchParams.get('v') || '');
+      // FFmpeg automatically drops the initial container delay in WebM, 
+      // naturally shifting the audio/video back by the exact latency amount.
+      // So we do NOT need to subtract the latency offset for the backend mix!
+      formData.append('start_time', recordingStartTimeRef.current.toString());
+      formData.append('mic_volume', micVolume.toString());
+      formData.append('reverb', reverbAmount.toString());
+
+      const res = await fetch(`/api/mix`, {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!res.ok) {
+        throw new Error('Mixing failed');
+      }
+
+      const mixedBlob = await res.blob();
+      const url = URL.createObjectURL(mixedBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `VocalDrop_${title || 'Recording'}.mp4`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      setShowSyncModal(false);
+      URL.revokeObjectURL(recordedBlobUrl!);
+      setRecordedBlobUrl(null);
+      setRecordedBlob(null);
+
+    } catch (err) {
+      console.error(err);
+      alert('Failed to save the final recording.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
     <div className={styles.playerContainer}>
       <img src={cover || ''} className={styles.bgImage} alt="Background" />
       
-      {showRecordModal && (
-        <div style={{position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
-          <div style={{background: '#1a1a1a', padding: '2rem', borderRadius: '24px', textAlign: 'center', maxWidth: '90%', width: '400px', border: '1px solid rgba(255,255,255,0.1)'}}>
-            <h2 style={{color: 'white', marginBottom: '1.5rem', fontSize: '1.5rem'}}>Recording Studio</h2>
-            
-            <div style={{textAlign: 'left', marginBottom: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem'}}>
-              {audioDevices.length > 0 && (
-                <div>
-                  <label style={{color: 'rgba(255,255,255,0.7)', fontSize: '0.85rem', marginBottom: '0.5rem', display: 'block'}}>Microphone</label>
-                  <select value={selectedAudioDevice} onChange={e => { setSelectedAudioDevice(e.target.value); localStorage.setItem('vd_audio_device', e.target.value); }} style={{width: '100%', padding: '0.75rem', borderRadius: '8px', background: 'rgba(255,255,255,0.1)', color: 'white', border: 'none', outline: 'none'}}>
-                    {audioDevices.map(d => <option key={d.deviceId} value={d.deviceId}>{d.label || 'Unknown Microphone'}</option>)}
-                  </select>
-                </div>
-              )}
-              {videoDevices.length > 0 && (
-                <>
-                  <div>
-                    <label style={{color: 'rgba(255,255,255,0.7)', fontSize: '0.85rem', marginBottom: '0.5rem', display: 'block'}}>Live Camera Preview</label>
-                    <div style={{
-                      width: '100%', 
-                      display: 'flex', 
-                      justifyContent: 'center', 
-                      alignItems: 'center',
-                      marginBottom: '1rem'
-                    }}>
-                      <div style={{
-                        background: 'rgba(0,0,0,0.5)', 
-                        borderRadius: '8px', 
-                        overflow: 'hidden', 
-                        border: '1px solid rgba(255,255,255,0.1)',
+            {showRecordModal ? (
+        <>
+          <div style={{position:'absolute', top:'2rem', left:'2rem', zIndex: 300, display: 'flex', gap: '1rem'}}>
+              <button 
+                onClick={() => {setShowRecordModal(false); if(!isPlaying) togglePlay();}}
+                style={{
+                  background: 'rgba(0,0,0,0.5)', 
+                  border: '1px solid rgba(255,255,255,0.2)', 
+                  padding: '0.75rem', 
+                  borderRadius: '50%', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  cursor: 'pointer', 
+                  transition: 'background 0.2s ease'
+                }}
+                title="Back"
+              >
+                <ArrowLeft size={24} color="white" />
+              </button>
+          </div>
+          <div className={styles.modalContentWrapper}>
+            <h2 style={{color: 'white', fontSize: 'clamp(1.3rem, 5vw, 1.8rem)', margin: 0, textAlign: 'center', textShadow: '0 4px 12px rgba(0,0,0,0.5)', whiteSpace: 'nowrap'}}>Recording Studio</h2>
+           <div className={styles.modalInnerContainer}>
+            <div className={styles.modalVideoSide}>
+              {videoDevices.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%', maxWidth: '400px', alignItems: 'center' }}>
+                  <div style={{
+                  width: '100%', 
+                  display: 'flex', 
+                  justifyContent: 'center', 
+                  alignItems: 'center',
+                  background: 'rgba(0,0,0,0.2)',
+                  borderRadius: '16px',
+                  padding: '1rem'
+                }}>
+                  <div style={{
+                    background: 'rgba(0,0,0,0.5)', 
+                    borderRadius: '12px', 
+                    overflow: 'hidden', 
+                    boxShadow: '0 8px 32px rgba(0,0,0,0.5)'
+                  }}>
+                    <video 
+                      ref={previewVideoRef} 
+                      muted 
+                      playsInline 
+                      style={{
+                        display: 'block',
+                        maxWidth: '100%',
+                        maxHeight: 'min(250px, 25vh)',
                         aspectRatio: videoAspectRatio === 'portrait' ? '9/16' : videoAspectRatio === 'landscape' ? '16/9' : videoAspectRatio === 'portrait_43' ? '3/4' : videoAspectRatio === 'landscape_43' ? '4/3' : 'auto',
-                        width: (videoAspectRatio === 'landscape' || videoAspectRatio === 'landscape_43') ? '100%' : 'auto',
-                        height: (videoAspectRatio === 'portrait' || videoAspectRatio === 'portrait_43' || videoAspectRatio === 'auto') ? '250px' : 'auto',
-                        maxHeight: '250px'
-                      }}>
-                        <video 
-                          ref={previewVideoRef} 
-                          muted 
-                          playsInline 
-                          style={{
-                            width: '100%',
-                            height: '100%',
-                            objectFit: 'cover'
-                          }} 
-                        />
-                      </div>
+                        objectFit: 'cover'
+                      }} 
+                    />
+                  </div>
+                </div>
+              </div>
+              ) : null}
+            </div>
+
+            <div className={styles.modalSettingsSide}>
+              <div style={{width: '100%', maxWidth: '450px', display: 'flex', flexDirection: 'column', gap: '1.5rem', textAlign: 'left', background: 'rgba(0,0,0,0.4)', padding: '1.5rem', borderRadius: '24px', backdropFilter: 'blur(20px)'}}>
+                <div style={{display: 'flex', gap: '1rem'}}>
+                  <div style={{flex: 2}}>
+                    <label style={{color: 'rgba(255,255,255,0.7)', fontSize: '0.85rem', marginBottom: '0.5rem', display: 'block'}}>Microphone</label>
+                    <select value={selectedAudioDevice} onChange={e => { setSelectedAudioDevice(e.target.value); localStorage.setItem('vd_audio_device', e.target.value); }} style={{width: '100%', padding: '0.75rem', borderRadius: '8px', background: 'rgba(255,255,255,0.1)', color: 'white', border: 'none', outline: 'none'}}>
+                      {audioDevices.length > 0 ? audioDevices.map(d => <option key={d.deviceId} value={d.deviceId}>{d.label || 'Unknown Microphone'}</option>) : <option>No Mic Found</option>}
+                    </select>
+                  </div>
+                  <div style={{flex: 1}}>
+                    <label style={{color: 'rgba(255,255,255,0.7)', fontSize: '0.85rem', marginBottom: '0.5rem', display: 'block'}}>Channels</label>
+                    <select value={micChannels} onChange={e => { setMicChannels(e.target.value as any); localStorage.setItem('vd_mic_channels', e.target.value); }} style={{width: '100%', padding: '0.75rem', borderRadius: '8px', background: 'rgba(255,255,255,0.1)', color: 'white', border: 'none', outline: 'none'}}>
+                      <option value="mono">Mono</option>
+                      <option value="stereo">Stereo</option>
+                    </select>
+                  </div>
+                </div>
+                
+                {videoDevices.length > 0 && (
+                  <div style={{display: 'flex', gap: '1rem'}}>
+                    <div style={{flex: 1}}>
+                      <label style={{color: 'rgba(255,255,255,0.7)', fontSize: '0.85rem', marginBottom: '0.5rem', display: 'block'}}>Camera</label>
+                      <select value={selectedVideoDevice} onChange={e => { setSelectedVideoDevice(e.target.value); localStorage.setItem('vd_video_device', e.target.value); }} style={{width: '100%', padding: '0.75rem', borderRadius: '8px', background: 'rgba(255,255,255,0.1)', color: 'white', border: 'none', outline: 'none'}}>
+                        {videoDevices.map(d => <option key={d.deviceId} value={d.deviceId}>{d.label || 'Unknown Camera'}</option>)}
+                      </select>
+                    </div>
+                    <div style={{flex: 1}}>
+                      <label style={{color: 'rgba(255,255,255,0.7)', fontSize: '0.85rem', marginBottom: '0.5rem', display: 'block'}}>Video Aspect Ratio</label>
+                      <select value={videoAspectRatio} onChange={e => { setVideoAspectRatio(e.target.value as any); localStorage.setItem('vd_video_aspect_ratio', e.target.value); }} style={{width: '100%', padding: '0.75rem', borderRadius: '8px', background: 'rgba(255,255,255,0.1)', color: 'white', border: 'none', outline: 'none'}}>
+                        <option value="auto">Auto</option>
+                        <option value="portrait">Portrait (9:16)</option>
+                        <option value="landscape">Landscape (16:9)</option>
+                        <option value="portrait_43">Portrait (3:4)</option>
+                        <option value="landscape_43">Landscape (4:3)</option>
+                      </select>
                     </div>
                   </div>
-                  <div>
-                    <label style={{color: 'rgba(255,255,255,0.7)', fontSize: '0.85rem', marginBottom: '0.5rem', display: 'block'}}>Camera</label>
-                    <select value={selectedVideoDevice} onChange={e => { setSelectedVideoDevice(e.target.value); localStorage.setItem('vd_video_device', e.target.value); }} style={{width: '100%', padding: '0.75rem', borderRadius: '8px', background: 'rgba(255,255,255,0.1)', color: 'white', border: 'none', outline: 'none'}}>
-                      {videoDevices.map(d => <option key={d.deviceId} value={d.deviceId}>{d.label || 'Unknown Camera'}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label style={{color: 'rgba(255,255,255,0.7)', fontSize: '0.85rem', marginBottom: '0.5rem', display: 'block'}}>Camera Video Delay ({videoLatencyMs}ms)</label>
-                    <input type="range" min="0" max="1000" value={videoLatencyMs} onChange={e => { setVideoLatencyMs(parseInt(e.target.value)); localStorage.setItem('vd_video_latency_ms', e.target.value); }} style={{width: '100%', marginBottom: '1rem'}} />
-                  </div>
-                  <div>
-                    <label style={{color: 'rgba(255,255,255,0.7)', fontSize: '0.85rem', marginBottom: '0.5rem', display: 'block'}}>Video Aspect Ratio</label>
-                    <select value={videoAspectRatio} onChange={e => { setVideoAspectRatio(e.target.value as any); localStorage.setItem('vd_video_aspect_ratio', e.target.value); }} style={{width: '100%', padding: '0.75rem', borderRadius: '8px', background: 'rgba(255,255,255,0.1)', color: 'white', border: 'none', outline: 'none'}}>
-                      <option value="auto">Auto-detect (Max Resolution)</option>
-                      <option value="portrait">Portrait (9:16)</option>
-                      <option value="landscape">Landscape (16:9)</option>
-                      <option value="portrait_43">Portrait (3:4 High-Res)</option>
-                      <option value="landscape_43">Landscape (4:3 High-Res)</option>
-                    </select>
-                  </div>
-                </>
-              )}
-              <div>
-                <label style={{color: 'rgba(255,255,255,0.7)', fontSize: '0.85rem', marginBottom: '0.5rem', display: 'block'}}>Mic Input Delay Compensation ({latencyMs}ms)</label>
-                <input type="range" min="-500" max="500" value={latencyMs} onChange={e => { setLatencyMs(parseInt(e.target.value)); localStorage.setItem('vd_latency_ms', e.target.value); }} style={{width: '100%'}} />
-                <p style={{color: 'rgba(255,255,255,0.4)', fontSize: '0.75rem', marginTop: '0.5rem'}}>Increase if your voice is recorded slightly earlier than the music.</p>
-              </div>
-              <div style={{display: 'flex', gap: '1rem'}}>
-                <div style={{flex: 1}}>
-                  <label style={{color: 'rgba(255,255,255,0.7)', fontSize: '0.85rem', marginBottom: '0.5rem', display: 'block'}}>Microphone Volume ({Math.round(micVolume * 100)}%)</label>
-                  <input type="range" min="0" max="400" value={Math.round(micVolume * 100)} onChange={e => { const val = parseInt(e.target.value) / 100; setMicVolume(val); localStorage.setItem('vd_mic_volume', val.toString()); }} style={{width: '100%'}} />
-                </div>
-                <div style={{flex: 1}}>
-                  <label style={{color: 'rgba(255,255,255,0.7)', fontSize: '0.85rem', marginBottom: '0.5rem', display: 'block'}}>Studio Reverb ({Math.round(reverbAmount * 100)}%)</label>
-                  <input type="range" min="0" max="100" value={Math.round(reverbAmount * 100)} onChange={e => { const val = parseInt(e.target.value) / 100; setReverbAmount(val); localStorage.setItem('vd_reverb_amount', val.toString()); }} style={{width: '100%'}} />
-                </div>
-              </div>
-            </div>
+                )}
+                
 
-            <div style={{display: 'flex', gap: '1rem', justifyContent: 'center'}}>
-              <button onClick={() => startRecording('audio')} style={{background: 'rgba(255,255,255,0.1)', color: 'white', padding: '1rem 1.5rem', borderRadius: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', border: 'none', cursor: 'pointer', flex: 1}}>
-                <Mic size={32} color="var(--apple-red)" />
-                Voice Only
-              </button>
-              <button onClick={() => startRecording('video')} style={{background: 'rgba(255,255,255,0.1)', color: 'white', padding: '1rem 1.5rem', borderRadius: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', border: 'none', cursor: 'pointer', flex: 1}}>
-                <Video size={32} color="var(--apple-red)" />
-                Voice + Video
-              </button>
+                <div style={{display: 'flex', gap: '1rem', justifyContent: 'center', marginTop: '1rem'}}>
+                  <button onClick={() => startRecording('audio')} style={{background: 'rgba(255,255,255,0.1)', color: 'white', padding: '1rem 1.5rem', borderRadius: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', border: 'none', cursor: 'pointer', flex: 1, transition: 'all 0.2s'}}>
+                    <Mic size={24} color="var(--apple-red)" />
+                    <span style={{fontSize: '0.9rem', fontWeight: 600}}>Voice Only</span>
+                  </button>
+                  {videoDevices.length > 0 && (
+                    <button onClick={() => startRecording('video')} style={{background: 'rgba(255,255,255,0.1)', color: 'white', padding: '1rem 1.5rem', borderRadius: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', border: 'none', cursor: 'pointer', flex: 1, transition: 'all 0.2s'}}>
+                      <Video size={24} color="var(--apple-red)" />
+                      <span style={{fontSize: '0.9rem', fontWeight: 600}}>Voice + Video</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+             </div>
             </div>
-            <button onClick={() => {setShowRecordModal(false); if(!isPlaying) togglePlay();}} style={{marginTop: '1.5rem', color: 'rgba(255,255,255,0.5)', textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer'}}>Cancel</button>
           </div>
-        </div>
-      )}
+        </>
+      ) : showSyncModal && recordedBlobUrl ? (
 
-      
+            <>
+          <div style={{position:'absolute', top:'2rem', left:'2rem', zIndex: 300, display: 'flex', gap: '1rem'}}>
+              <button 
+                disabled={isSaving}
+                onClick={() => {
+                  setShowSyncModal(false);
+                  URL.revokeObjectURL(recordedBlobUrl);
+                  setRecordedBlobUrl(null);
+                  setRecordedBlob(null);
+                }}
+                style={{
+                  background: 'rgba(0,0,0,0.5)', 
+                  border: '1px solid rgba(255,255,255,0.2)', 
+                  padding: '0.75rem', 
+                  borderRadius: '50%', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  cursor: isSaving ? 'not-allowed' : 'pointer', 
+                  transition: 'background 0.2s ease',
+                  opacity: isSaving ? 0.5 : 1
+                }}
+                title="Discard & Back"
+              >
+                <ArrowLeft size={24} color="white" />
+              </button>
+          </div>
+          <div className={styles.modalContentWrapper}>
+            <h2 style={{color: 'white', fontSize: 'clamp(1.3rem, 5vw, 1.8rem)', margin: 0, textAlign: 'center', textShadow: '0 4px 12px rgba(0,0,0,0.5)', whiteSpace: 'nowrap'}}>Adjust Vocal Mix</h2>
+           <div className={styles.modalInnerContainer}>
+            <div className={styles.modalVideoSide}>
+             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%', maxWidth: '400px', alignItems: 'center' }}>
+                <div style={{
+                  width: '100%', 
+                  display: 'flex', 
+                  justifyContent: 'center', 
+                  alignItems: 'center',
+                  background: 'rgba(0,0,0,0.2)',
+                  borderRadius: '16px',
+                  padding: '1rem'
+                }}>
+                  <div 
+                    onClick={() => {
+                      const v = document.getElementById('sync-preview-video') as HTMLVideoElement;
+                      if (!v) return;
+                      if (v.paused) {
+                        if (!hasPlayedPreview) {
+                           v.currentTime = 0;
+                           setHasPlayedPreview(true);
+                        } else if (v.ended || (syncDuration > 0 && v.currentTime >= syncDuration - 0.1) || v.currentTime >= v.duration - 0.1) {
+                           v.currentTime = 0;
+                        }
+                        v.play();
+                        playVocal(v.currentTime);
+                        if (activeAudio.current === 'stems' && chunkPlayer.current) {
+                          const LATENCY_OFFSET = 0.04;
+                          const expectedInstTime = Math.max(0, recordingStartTimeRef.current + v.currentTime - LATENCY_OFFSET);
+                          chunkPlayer.current.seek(expectedInstTime);
+                          if (!isPlaying) {
+                             chunkPlayer.current.play();
+                             setIsPlaying(true);
+                          }
+                        } else if (activeAudio.current === 'original' && originalAudio.current) {
+                          const LATENCY_OFFSET = 0.04;
+                          const expectedInstTime = Math.max(0, recordingStartTimeRef.current + v.currentTime - LATENCY_OFFSET);
+                          originalAudio.current.currentTime = expectedInstTime;
+                          if (!isPlaying) {
+                             originalAudio.current.play();
+                             setIsPlaying(true);
+                          }
+                        }
+                      } else {
+                        v.pause();
+                        stopVocal();
+                        if (activeAudio.current === 'stems' && chunkPlayer.current) {
+                          chunkPlayer.current.pause();
+                        } else if (activeAudio.current === 'original' && originalAudio.current) {
+                          originalAudio.current.pause();
+                        }
+                        setIsPlaying(false);
+                      }
+                    }}
+                    onMouseEnter={() => setIsHoveringVideo(true)}
+                    onMouseLeave={() => setIsHoveringVideo(false)}
+                    style={{
+                      background: 'rgba(0,0,0,0.5)', 
+                      borderRadius: '12px', 
+                      overflow: 'hidden', 
+                      boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+                      position: 'relative',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <video 
+                      id="sync-preview-video"
+                      src={recordedBlobUrl}
+                      controls={false}
+                      muted={true}
+                      playsInline
+                      style={{
+                        display: 'block',
+                        maxWidth: '100%',
+                        maxHeight: 'min(250px, 25vh)',
+                        aspectRatio: videoAspectRatio === 'portrait' ? '9/16' : videoAspectRatio === 'landscape' ? '16/9' : videoAspectRatio === 'portrait_43' ? '3/4' : videoAspectRatio === 'landscape_43' ? '4/3' : 'auto',
+                        objectFit: 'cover'
+                      }}
+                    onLoadedData={(e) => {
+                       if (!hasPlayedPreview) {
+                          e.currentTarget.currentTime = syncDuration > 0 ? syncDuration / 2 : 0.1;
+                       }
+                    }}
+                    onTimeUpdate={(e) => {
+                       const v = e.currentTarget;
+                       setSyncTime(v.currentTime);
+                       if (syncDuration > 0 && v.currentTime >= syncDuration - 0.1) {
+                          v.pause();
+                          stopVocal();
+                          if (activeAudio.current === 'stems' && chunkPlayer.current) {
+                            chunkPlayer.current.pause();
+                          } else if (activeAudio.current === 'original' && originalAudio.current) {
+                            originalAudio.current.pause();
+                          }
+                          setIsPlaying(false);
+                       }
+                    }}
+                    onEnded={() => {
+                       stopVocal();
+                       if (activeAudio.current === 'stems' && chunkPlayer.current) {
+                         chunkPlayer.current.pause();
+                       } else if (activeAudio.current === 'original' && originalAudio.current) {
+                         originalAudio.current.pause();
+                       }
+                       setIsPlaying(false);
+                    }}
+                  />
+                  
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: '50%',
+                      left: '50%',
+                      transform: 'translate(-50%, -50%)',
+                      background: 'rgba(0,0,0,0.6)',
+                      backdropFilter: 'blur(10px)',
+                      border: '1px solid rgba(255,255,255,0.2)',
+                      borderRadius: '50%',
+                      width: '3.5rem',
+                      height: '3.5rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'white',
+                      opacity: (!isPlaying || (isHoveringVideo && typeof window !== 'undefined' && window.matchMedia('(hover: hover)').matches)) ? 1 : 0,
+                      pointerEvents: 'none',
+                      transition: 'opacity 0.3s ease'
+                    }}
+                  >
+                     {isPlaying ? <Pause size={24} fill="white" /> : <Play size={24} fill="white" className="ml-1" />}
+                  </div>
+                </div>
+              </div>
+              
+                <div style={{width: '100%', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem'}}>
+                  <span style={{color: 'rgba(255,255,255,0.7)', fontSize: '0.75rem', minWidth: '40px'}}>{formatTime(syncTime)}</span>
+                  <input 
+                    type="range" 
+                    min="0" 
+                    max={syncDuration || 100} 
+                    value={syncTime}
+                    onChange={(e) => {
+                      const newTime = parseFloat(e.target.value);
+                      const v = document.getElementById('sync-preview-video') as HTMLVideoElement;
+                      if (v) v.currentTime = newTime;
+                      setSyncTime(newTime);
+                    }}
+                    onPointerUp={(e) => {
+                      const newTime = parseFloat((e.target as HTMLInputElement).value);
+                      const LATENCY_OFFSET = 0.04;
+                      const expectedInstTime = Math.max(0, recordingStartTimeRef.current + newTime - LATENCY_OFFSET);
+                      const v = document.getElementById('sync-preview-video') as HTMLVideoElement;
+                      if (activeAudio.current === 'stems' && chunkPlayer.current) {
+                        chunkPlayer.current.seek(expectedInstTime);
+                        if (v && !v.paused) chunkPlayer.current.play();
+                      } else if (activeAudio.current === 'original' && originalAudio.current) {
+                        originalAudio.current.currentTime = expectedInstTime;
+                        if (v && !v.paused) originalAudio.current.play();
+                      }
+                      if (v && !v.paused) {
+                        playVocal(newTime);
+                      }
+                    }}
+                    style={{flex: 1, cursor: 'pointer'}}
+                  />
+                  <span style={{color: 'rgba(255,255,255,0.7)', fontSize: '0.75rem', minWidth: '40px'}}>{formatTime(syncDuration)}</span>
+                </div>
+              </div>
+             </div>
+
+            <div className={styles.modalSettingsSide}>
+              <div style={{width: '100%', maxWidth: '450px', display: 'flex', flexDirection: 'column', gap: '1.5rem', textAlign: 'left', background: 'rgba(0,0,0,0.4)', padding: '1.5rem', borderRadius: '24px', backdropFilter: 'blur(20px)'}}>
+                <p style={{color: 'rgba(255,255,255,0.7)', fontSize: '0.85rem'}}>
+                  For the best sync, please record using wired earphones. 
+                </p>
+                <div style={{display: 'flex', gap: '1rem'}}>
+                  <div style={{flex: 1}}>
+                    <label style={{color: 'rgba(255,255,255,0.7)', fontSize: '0.85rem', marginBottom: '0.5rem', display: 'block'}}>Mic Vol ({Math.round(micVolume * 100)}%)</label>
+                    <input type="range" min="0" max="400" value={Math.round(micVolume * 100)} onChange={e => { const val = parseInt(e.target.value) / 100; setMicVolume(val); localStorage.setItem('vd_mic_volume', val.toString()); }} style={{width: '100%'}} />
+                  </div>
+                  <div style={{flex: 1}}>
+                    <label style={{color: 'rgba(255,255,255,0.7)', fontSize: '0.85rem', marginBottom: '0.5rem', display: 'block'}}>Reverb ({Math.round(reverbAmount * 100)}%)</label>
+                    <input type="range" min="0" max="100" value={Math.round(reverbAmount * 100)} onChange={e => { const val = parseInt(e.target.value) / 100; setReverbAmount(val); localStorage.setItem('vd_reverb_amount', val.toString()); }} style={{width: '100%'}} />
+                  </div>
+                </div>
+
+                <button 
+                  onClick={handleSaveRecording}
+                  disabled={isSaving}
+                  style={{
+                    background: 'rgba(255,255,255,0.1)', 
+                    color: 'white', 
+                    padding: '1rem 1.5rem', 
+                    borderRadius: '12px', 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    alignItems: 'center', 
+                    gap: '0.5rem', 
+                    border: 'none', 
+                    cursor: isSaving ? 'not-allowed' : 'pointer', 
+                    opacity: isSaving ? 0.5 : 1,
+                    width: '100%', 
+                    marginTop: '0.5rem', 
+                    transition: 'all 0.2s'
+                  }}>
+                  {isSaving ? (
+                    <Loader2 size={24} color="var(--apple-red)" className="animate-spin" />
+                  ) : (
+                    <Download size={24} color="var(--apple-red)" />
+                  )}
+                  <span style={{fontSize: '0.9rem', fontWeight: 600}}>
+                    {isSaving ? 'Mixing Track...' : 'Save Final Recording'}
+                  </span>
+                </button>
+              </div>
+             </div>
+            </div>
+          </div>
+        </>
+      ) : (
+        <>
       {separationLoading && (
         <div className={styles.karaokeLoader}>
           <Loader2 size={16} className="animate-spin" />
@@ -1124,7 +1589,7 @@ function PlayerContent() {
         </button>
       </div>
 
-      <div style={{ position: 'absolute', top: '2rem', right: '2rem', zIndex: 100, display: 'flex', gap: '1rem', alignItems: 'center' }}>
+      <div style={{ position: 'absolute', top: '2rem', right: '2rem', zIndex: 100, display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center' }}>
         {/* Lyrics Translation Toggle */}
         {englishLyrics.length > 0 && (
           <button 
@@ -1135,21 +1600,83 @@ function PlayerContent() {
             <Languages size={24} />
           </button>
         )}
+
+        {/* Pitch Adjust */}
+        {mode === 'karaoke' && (
+          <div style={{ position: 'relative' }}>
+            <button 
+              className={`${styles.karaokeBtn} ${pitchOffset !== 0 ? styles.active : ''}`} 
+              onClick={() => setShowPitchSlider(!showPitchSlider)} 
+              disabled={!karaokeReady}
+              title="Adjust Pitch"
+              style={{ color: 'white', background: 'rgba(0,0,0,0.5)', padding: '0.75rem', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'background 0.2s ease', border: '1px solid rgba(255,255,255,0.2)', width: 'auto', height: 'auto' }}
+            >
+              <SlidersHorizontal size={24} />
+            </button>
+            {showPitchSlider && (
+              <>
+                <div style={{ position: 'fixed', inset: 0, zIndex: 90 }} onClick={() => setShowPitchSlider(false)} />
+                <div style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 1rem)',
+                  right: '0',
+                  background: 'rgba(20,20,20,0.95)',
+                  backdropFilter: 'blur(20px)',
+                  padding: '1rem',
+                  borderRadius: '16px',
+                  border: '1px solid rgba(255,255,255,0.15)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '1rem',
+                  width: '240px',
+                  boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
+                  zIndex: 100
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.9)', fontWeight: 500 }}>Key Adjust</span>
+                    <span style={{ fontSize: '0.9rem', fontVariantNumeric: 'tabular-nums', color: '#ff2d55', fontWeight: 600 }}>
+                      {pitchOffset > 0 ? '+' : ''}{pitchOffset.toFixed(1)}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)' }}>-6</span>
+                    <input
+                      type="range"
+                      min="-6"
+                      max="6"
+                      step="0.1"
+                      value={pitchOffset}
+                      onChange={(e) => setPitchOffset(parseFloat(e.target.value))}
+                      onPointerUp={(e) => chunkPlayer.current?.setPitchOffset(parseFloat(e.currentTarget.value))}
+                      style={{ flex: 1, accentColor: '#ff2d55' }}
+                    />
+                    <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)' }}>+6</span>
+                  </div>
+                  {pitchOffset !== 0 && (
+                    <button 
+                      onClick={() => { setPitchOffset(0); chunkPlayer.current?.setPitchOffset(0); }}
+                      style={{ background: 'rgba(255,45,85,0.1)', border: '1px solid rgba(255,45,85,0.3)', color: '#ff2d55', fontSize: '0.8rem', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer', fontWeight: 500 }}
+                    >
+                      Reset to Original
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       <div className={styles.leftPane}>
         {isRecording && recordingMode === 'video' ? (
-          <div className={`${styles.videoWrapper} ${isPlaying ? styles.playing : ''}`}
-               style={{ 
-                 aspectRatio: videoAspectRatio === 'portrait' ? '9/16' : videoAspectRatio === 'landscape' ? '16/9' : videoAspectRatio === 'portrait_43' ? '3/4' : videoAspectRatio === 'landscape_43' ? '4/3' : 'auto',
-                 width: videoAspectRatio === 'auto' ? 'auto' : undefined
-               }}>
+          <div className={`${styles.playerVideoWrapper} ${isPlaying ? styles.playing : ''}`}>
             <video 
               ref={videoRef}
-              className={styles.cover}
               muted
               playsInline
-              style={{ objectFit: 'cover' }}
+              style={{
+                objectFit: 'contain'
+              }}
             />
           </div>
         ) : (
@@ -1218,6 +1745,7 @@ function PlayerContent() {
           <input 
             type="range"
             className={styles.rangeSlider}
+            disabled={isRecording}
             min={0}
             max={duration || 100}
             step="0.1"
@@ -1264,66 +1792,9 @@ function PlayerContent() {
         <div className={styles.buttons}>
           <div className={styles.leftSideButtons}>
             {mode === 'karaoke' && (
-              <div style={{ position: 'relative' }}>
-                <button 
-                  className={`${styles.karaokeBtn} ${pitchOffset !== 0 ? styles.active : ''}`} 
-                  onClick={() => setShowPitchSlider(!showPitchSlider)} 
-                  disabled={!karaokeReady}
-                  title="Adjust Pitch"
-                >
-                  <SlidersHorizontal size={22} />
-                </button>
-                {showPitchSlider && (
-                  <>
-                    <div style={{ position: 'fixed', inset: 0, zIndex: 90 }} onClick={() => setShowPitchSlider(false)} />
-                    <div style={{
-                      position: 'absolute',
-                      bottom: 'calc(100% + 1rem)',
-                      left: '0',
-                      background: 'rgba(20,20,20,0.95)',
-                      backdropFilter: 'blur(20px)',
-                      padding: '1rem',
-                      borderRadius: '16px',
-                      border: '1px solid rgba(255,255,255,0.15)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '1rem',
-                      width: '240px',
-                      boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
-                      zIndex: 100
-                    }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.9)', fontWeight: 500 }}>Key Adjust</span>
-                        <span style={{ fontSize: '0.9rem', fontVariantNumeric: 'tabular-nums', color: '#ff2d55', fontWeight: 600 }}>
-                          {pitchOffset > 0 ? '+' : ''}{pitchOffset.toFixed(1)}
-                        </span>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                        <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)' }}>-6</span>
-                        <input
-                          type="range"
-                          min="-6"
-                          max="6"
-                          step="0.1"
-                          value={pitchOffset}
-                          onChange={(e) => setPitchOffset(parseFloat(e.target.value))}
-                          onPointerUp={(e) => chunkPlayer.current?.setPitchOffset(parseFloat(e.currentTarget.value))}
-                          style={{ flex: 1, accentColor: '#ff2d55' }}
-                        />
-                        <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)' }}>+6</span>
-                      </div>
-                      {pitchOffset !== 0 && (
-                        <button 
-                          onClick={() => { setPitchOffset(0); chunkPlayer.current?.setPitchOffset(0); }}
-                          style={{ background: 'rgba(255,45,85,0.1)', border: '1px solid rgba(255,45,85,0.3)', color: '#ff2d55', fontSize: '0.8rem', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer', fontWeight: 500 }}
-                        >
-                          Reset to Original
-                        </button>
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
+              <button className={`${styles.karaokeBtn} ${karaokeMode ? styles.active : ''}`} onClick={toggleKaraoke} disabled={!karaokeReady} title="Karaoke Mode">
+                <Mic2 size={24} />
+              </button>
             )}
           </div>
 
@@ -1342,26 +1813,22 @@ function PlayerContent() {
           </div>
 
           <div className={styles.rightSideButtons}>
-            {mode === 'karaoke' && (
-              <button className={`${styles.karaokeBtn} ${karaokeMode ? styles.active : ''}`} onClick={toggleKaraoke} disabled={!karaokeReady} title="Karaoke Mode">
-                <Mic2 size={24} />
-              </button>
-            )}
-
-            {mode === 'karaoke' && karaokeMode && !isRecording && (
-              <button className={`${styles.karaokeBtn} ${styles.desktopOnly}`} style={{background: 'rgba(255,255,255,0.1)'}} onClick={() => { if(isPlaying) togglePlay(); setShowRecordModal(true); }} disabled={!karaokeReady} title="Record">
-                <Circle size={24} fill="var(--apple-red)" color="var(--apple-red)" />
-              </button>
-            )}
-
-            {isRecording && (
-              <button className={`${styles.karaokeBtn} ${styles.active} ${styles.desktopOnly}`} onClick={stopRecording} title="Stop Recording">
-                <StopCircle size={24} fill="white" color="var(--apple-red)" className="animate-pulse" />
-              </button>
+            {mode === 'karaoke' && karaokeMode && (
+              !isRecording ? (
+                <button className={`${styles.karaokeBtn}`} style={{background: 'rgba(255,255,255,0.1)'}} onClick={() => { if(isPlaying) togglePlay(); setShowRecordModal(true); }} disabled={!karaokeReady} title="Record">
+                  <Circle size={24} fill="var(--apple-red)" color="var(--apple-red)" />
+                </button>
+              ) : (
+                <button className={`${styles.karaokeBtn} ${styles.active}`} onClick={stopRecording} title="Stop Recording">
+                  <StopCircle size={24} fill="white" color="var(--apple-red)" className="animate-pulse" />
+                </button>
+              )
             )}
           </div>
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 }
