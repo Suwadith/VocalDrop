@@ -150,6 +150,16 @@ If you have an NVIDIA GPU and want blazing-fast hardware-accelerated separation 
    ```
 3. Open your browser and go to `http://localhost:3000`.
 
+### Option D: Docker Deployment - Cloudflare Tunnel (For Mobile/Remote Access)
+If you want to instantly generate a secure HTTPS link to access your local app from anywhere in the world (e.g., to record from your iPhone over cellular), we've included a dedicated Cloudflare Tunnel Docker configuration!
+
+1. In the project root, run the dedicated Cloudflare configuration:
+   ```bash
+   docker-compose -f docker-compose.cloudflare.yml up --build
+   ```
+2. Watch your terminal output! `cloudflared` will print a unique URL that looks like `https://[random-words].trycloudflare.com`.
+3. Open that exact URL on your phone or any other device, and you'll have secure, encrypted access to VocalDrop with full microphone and camera permissions enabled!
+
 **To access on your phone (Option B & C):** Connect your phone to the same Wi-Fi network, find your computer's local IP address (e.g., `192.168.1.50`), and navigate to `http://192.168.1.50:3000` in your mobile browser!
 
 > [!TIP]
