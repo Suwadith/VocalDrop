@@ -216,8 +216,7 @@ VocalDrop features an advanced, entirely in-browser **Karaoke Recording Studio**
 
 ## Screenshots & Features
 
-> [!NOTE]
-> **Screenshot Disclaimer:** The screenshots featured below are from an early production model of the application. They may not accurately represent the current UI or reflect all the latest features recently added to the platform (such as the dynamic audio visualizer, real-time pitch correction, and updated lyrics layout).
+
 
 <details>
 <summary><strong>🖥️ Desktop Experience</strong> <i>(Click to expand)</i></summary>
@@ -228,9 +227,10 @@ VocalDrop features an advanced, entirely in-browser **Karaoke Recording Studio**
   <img src="screenshots/desktop_player.png" width="32%" title="Desktop Player" />
 </p>
 <p align="center">
-  <img src="screenshots/desktop_karaoke_ready.png" width="32%" title="Karaoke Mode" />
-  <img src="screenshots/desktop_recording_studio.png" width="32%" title="Recording Studio" />
-  <img src="screenshots/desktop_romanized_lyrics.png" width="32%" title="Romanized Lyrics" />
+  <img src="screenshots/desktop_karaoke_ready.png" width="24%" title="Karaoke Mode" />
+  <img src="screenshots/desktop_recording_studio.png" width="24%" title="Recording Studio" />
+  <img src="screenshots/desktop_vocal_mix.png" width="24%" title="Adjust Vocal Mix" />
+  <img src="screenshots/desktop_romanized_lyrics.png" width="24%" title="Romanized Lyrics" />
 </p>
 </details>
 
@@ -238,9 +238,11 @@ VocalDrop features an advanced, entirely in-browser **Karaoke Recording Studio**
 <summary><strong>📱 Mobile Experience</strong> <i>(Click to expand)</i></summary>
 <br>
 <p align="center">
-  <img src="screenshots/mobile_search.png" width="24%" title="Mobile Search" />
-  <img src="screenshots/mobile_results.png" width="24%" title="Mobile Results" />
-  <img src="screenshots/mobile_player.png" width="24%" title="Mobile Player" />
+  <img src="screenshots/mobile_search.png" width="19%" title="Mobile Search" />
+  <img src="screenshots/mobile_results.png" width="19%" title="Mobile Results" />
+  <img src="screenshots/mobile_player.png" width="19%" title="Mobile Player" />
+  <img src="screenshots/mobile_recording_studio.png" width="19%" title="Mobile Recording Studio" />
+  <img src="screenshots/mobile_vocal_mix.png" width="19%" title="Mobile Vocal Mix" />
 </p>
 </details>
 
