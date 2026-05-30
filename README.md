@@ -222,15 +222,12 @@ VocalDrop features an advanced, entirely in-browser **Karaoke Recording Studio**
 <summary><strong>🖥️ Desktop Experience</strong> <i>(Click to expand)</i></summary>
 <br>
 <p align="center">
-  <img src="screenshots/desktop_search.png" width="32%" title="Desktop Search" />
-  <img src="screenshots/desktop_results.png" width="32%" title="Desktop Results" />
-  <img src="screenshots/desktop_player.png" width="32%" title="Desktop Player" />
+  <img src="screenshots/desktop_results.png" width="45%" title="Desktop Results" />
+  <img src="screenshots/desktop_karaoke_ready.png" width="45%" title="Karaoke Mode" />
 </p>
 <p align="center">
-  <img src="screenshots/desktop_karaoke_ready.png" width="24%" title="Karaoke Mode" />
-  <img src="screenshots/desktop_recording_studio.png" width="24%" title="Recording Studio" />
-  <img src="screenshots/desktop_vocal_mix.png" width="24%" title="Adjust Vocal Mix" />
-  <img src="screenshots/desktop_romanized_lyrics.png" width="24%" title="Romanized Lyrics" />
+  <img src="screenshots/desktop_recording_studio.png" width="45%" title="Recording Studio" />
+  <img src="screenshots/desktop_vocal_mix.png" width="45%" title="Adjust Vocal Mix" />
 </p>
 </details>
 
@@ -238,11 +235,10 @@ VocalDrop features an advanced, entirely in-browser **Karaoke Recording Studio**
 <summary><strong>📱 Mobile Experience</strong> <i>(Click to expand)</i></summary>
 <br>
 <p align="center">
-  <img src="screenshots/mobile_search.png" width="19%" title="Mobile Search" />
-  <img src="screenshots/mobile_results.png" width="19%" title="Mobile Results" />
-  <img src="screenshots/mobile_player.png" width="19%" title="Mobile Player" />
-  <img src="screenshots/mobile_recording_studio.png" width="19%" title="Mobile Recording Studio" />
-  <img src="screenshots/mobile_vocal_mix.png" width="19%" title="Mobile Vocal Mix" />
+  <img src="screenshots/mobile_results.png" width="24%" title="Mobile Results" />
+  <img src="screenshots/mobile_player.png" width="24%" title="Mobile Player" />
+  <img src="screenshots/mobile_recording_studio.png" width="24%" title="Mobile Recording Studio" />
+  <img src="screenshots/mobile_vocal_mix.png" width="24%" title="Mobile Vocal Mix" />
 </p>
 </details>
 
