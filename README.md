@@ -80,6 +80,11 @@ The backend is built with FastAPI, `yt-dlp` for fetching audio, `audio-separator
 
 The backend API will now be running at `http://localhost:8000`.
 
+### Automated Cache Management
+To ensure instant load times when replaying songs, VocalDrop caches the downloaded audio (`.wav`), separated stems, and synchronized lyrics locally in the `backend/temp/` directory.
+- **48-Hour TTL:** An intelligent background thread runs every 6 hours to automatically wipe any cache files that haven't been accessed in over 48 hours, preventing infinite disk space consumption.
+- **Recording Cleanup:** Intermediate files generated during the Karaoke Recording Studio mixing process are instantly and automatically deleted the moment the final `.mp4` video downloads to your device.
+
 ---
 
 ## 2. Setting up the Frontend
