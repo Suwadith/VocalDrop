@@ -568,7 +568,7 @@ function PlayerContent() {
                 
                 mediaSourceRef.current = shared.ctx.createMediaElementSource(audioViz);
                 mediaSourceRef.current.connect(shared.analyser);
-                shared.analyser.connect(dummyGainRef.current);
+                mediaSourceRef.current.connect(dummyGainRef.current);
                 dummyGainRef.current.connect(shared.ctx.destination);
                 
                 audioViz.play().catch(() => console.log('Viz Autoplay blocked'));
