@@ -1742,6 +1742,7 @@ function PlayerContent() {
           cover={cover as string} 
           isPlaying={isPlaying} 
           isActive={hasStartedPlaying && (duration === 0 || currentTime < duration)} 
+          isListenMode={mode === 'listen'}
         />
 
         <div className={styles.timeline}>

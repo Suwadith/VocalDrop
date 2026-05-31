@@ -2,7 +2,7 @@ import React, { useRef, useEffect } from 'react';
 import { getSharedAudioContext } from './audioContext';
 import { motion } from 'framer-motion';
 
-export const AudioVisualizer = ({ cover, isPlaying, isActive }: { cover: string, isPlaying: boolean, isActive: boolean }) => {
+export const AudioVisualizer = ({ cover, isPlaying, isActive, isListenMode }: { cover: string, isPlaying: boolean, isActive: boolean, isListenMode?: boolean }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
   const isPlayingRef = useRef(isPlaying);
@@ -36,7 +36,18 @@ export const AudioVisualizer = ({ cover, isPlaying, isActive }: { cover: string,
       
       if (!isPlayingRef.current) return; // Freeze exactly where it is when paused
 
-      analyser.getByteFrequencyData(dataArray);
+      if (isListenMode) {
+        const time = Date.now() / 150;
+        for (let i = 0; i < dataArray.length; i++) {
+          const normalizedPos = Math.min(1, i / (dataArray.length * 0.5));
+          const envelope = Math.sin(normalizedPos * Math.PI); // Bell curve
+          const noise = Math.sin(time * 1.5 + i * 0.2) * Math.cos(time * 0.7 - i * 0.1);
+          const rawVal = 100 + noise * 120 + (Math.random() * 50);
+          dataArray[i] = Math.max(0, rawVal * (0.3 + 0.7 * envelope));
+        }
+      } else {
+        analyser.getByteFrequencyData(dataArray);
+      }
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       
