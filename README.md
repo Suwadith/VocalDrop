@@ -157,6 +157,7 @@ If you want to instantly generate a secure HTTPS link to access your local app f
    ```bash
    docker-compose -f docker-compose.cloudflare.yml up --build
    ```
+   *(For systems with an NVIDIA GPU, use `docker-compose.gpu.cloudflare.yml` instead)*
 2. Watch your terminal output! `cloudflared` will print a unique URL that looks like `https://[random-words].trycloudflare.com`.
 3. Open that exact URL on your phone or any other device, and you'll have secure, encrypted access to VocalDrop with full microphone and camera permissions enabled!
 
