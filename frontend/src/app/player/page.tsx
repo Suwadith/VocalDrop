@@ -644,11 +644,13 @@ function PlayerContent() {
   }, [id]);
 
   const togglePlay = () => {
-    const noSleep = getNoSleep();
-    if (!isPlaying) {
-      if (noSleep) noSleep.enable();
-    } else {
-      if (noSleep) noSleep.disable();
+    if (mode !== 'listen') {
+      const noSleep = getNoSleep();
+      if (!isPlaying) {
+        if (noSleep) noSleep.enable();
+      } else {
+        if (noSleep) noSleep.disable();
+      }
     }
 
     setIsPlaying(prev => {
