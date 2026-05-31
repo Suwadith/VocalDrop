@@ -548,14 +548,16 @@ function PlayerContent() {
             audio.play().then(() => setIsPlaying(true)).catch(() => console.log('Autoplay blocked'));
           }
 
-          const shared = getSharedAudioContext();
-          if (shared.ctx && shared.analyser && !mediaSourceRef.current) {
-            try {
-              mediaSourceRef.current = shared.ctx.createMediaElementSource(audio);
-              mediaSourceRef.current.connect(shared.ctx.destination);
-              mediaSourceRef.current.connect(shared.analyser);
-            } catch (e) {
-              console.error("AudioSource error:", e);
+          if (mode !== 'listen') {
+            const shared = getSharedAudioContext();
+            if (shared.ctx && shared.analyser && !mediaSourceRef.current) {
+              try {
+                mediaSourceRef.current = shared.ctx.createMediaElementSource(audio);
+                mediaSourceRef.current.connect(shared.ctx.destination);
+                mediaSourceRef.current.connect(shared.analyser);
+              } catch (e) {
+                console.error("AudioSource error:", e);
+              }
             }
           }
         }
