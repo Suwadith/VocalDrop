@@ -216,14 +216,15 @@ VocalDrop features an advanced, entirely in-browser **Karaoke Recording Studio**
 
 ## Screenshots & Features
 
-
-
 <details>
 <summary><strong>🖥️ Desktop Experience</strong> <i>(Click to expand)</i></summary>
 <br>
 <p align="center">
   <img src="screenshots/desktop_results.png" width="45%" title="Desktop Results" />
   <img src="screenshots/desktop_karaoke_ready.png" width="45%" title="Karaoke Mode" />
+  <img src="screenshots/desktop_recording_lyrics.png" width="45%" title="Desktop Recording (Lyrics Mode)" />
+  <img src="screenshots/desktop_recording_studio.png" width="45%" title="Desktop Recording Studio" />
+  <img src="screenshots/desktop_vocal_mix.png" width="45%" title="Desktop Vocal Mix" />
 </p>
 </details>
 
@@ -233,6 +234,9 @@ VocalDrop features an advanced, entirely in-browser **Karaoke Recording Studio**
 <p align="center">
   <img src="screenshots/mobile_results.png" width="32%" title="Mobile Results" />
   <img src="screenshots/mobile_player.png" width="32%" title="Mobile Player" />
+  <img src="screenshots/mobile_recording_lyrics.png" width="32%" title="Mobile Recording (Lyrics Mode)" />
+  <img src="screenshots/mobile_recording_studio.png" width="32%" title="Mobile Recording Studio" />
+  <img src="screenshots/mobile_vocal_mix.png" width="32%" title="Mobile Vocal Mix" />
 </p>
 </details>
 
