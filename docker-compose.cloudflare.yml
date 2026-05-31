@@ -21,6 +21,6 @@ services:
 
   cloudflared:
     image: cloudflare/cloudflared:latest
-    command: tunnel --url http://frontend:3000
+    command: tunnel --http-host-header localhost --url http://frontend:3000
     depends_on:
       - frontend
