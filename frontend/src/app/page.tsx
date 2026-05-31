@@ -137,8 +137,10 @@ export default function Home() {
     setIsNavigating(true);
     
     // Enable NoSleep immediately upon user interaction to bypass iOS strict policies
-    const noSleep = getNoSleep();
-    if (noSleep) noSleep.enable();
+    if (!listenMode) {
+      const noSleep = getNoSleep();
+      if (noSleep) noSleep.enable();
+    }
 
     // Navigate to player page with data
     const params = new URLSearchParams({
