@@ -566,8 +566,12 @@ function PlayerContent() {
                 dummyGainRef.current = shared.ctx.createGain();
                 dummyGainRef.current.gain.value = 0;
                 
+                const vizGain = shared.ctx.createGain();
+                vizGain.gain.value = 0.6; // Scale down to match Karaoke aesthetic
+                
                 mediaSourceRef.current = shared.ctx.createMediaElementSource(audioViz);
-                mediaSourceRef.current.connect(shared.analyser);
+                mediaSourceRef.current.connect(vizGain);
+                vizGain.connect(shared.analyser);
                 mediaSourceRef.current.connect(dummyGainRef.current);
                 dummyGainRef.current.connect(shared.ctx.destination);
                 
