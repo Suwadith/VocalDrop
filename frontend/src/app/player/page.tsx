@@ -252,7 +252,9 @@ function PlayerContent() {
   const [separationLoading, setSeparationLoading] = useState(mode === 'karaoke');
 
   const originalAudio = useRef<HTMLAudioElement | null>(null);
+  const audioVizRef = useRef<HTMLAudioElement | null>(null);
   const mediaSourceRef = useRef<MediaElementAudioSourceNode | null>(null);
+  const dummyGainRef = useRef<GainNode | null>(null);
   const chunkPlayer = useRef<ChunkPlayer | null>(null);
   
   const [showRecordModal, setShowRecordModal] = useState(false);
@@ -429,6 +431,11 @@ function PlayerContent() {
 
     if (activeAudio.current === 'original' && originalAudio.current) {
       t = originalAudio.current.currentTime;
+      if (mode === 'listen' && audioVizRef.current) {
+        if (Math.abs(audioVizRef.current.currentTime - t) > 0.2) {
+          audioVizRef.current.currentTime = t;
+        }
+      }
     } else if (activeAudio.current === 'stems' && chunkPlayer.current) {
       chunkPlayer.current.checkBuffering();
       t = chunkPlayer.current.getCurrentTime();
@@ -551,9 +558,25 @@ function PlayerContent() {
           const shared = getSharedAudioContext();
           if (shared.ctx && shared.analyser && !mediaSourceRef.current) {
             try {
-              mediaSourceRef.current = shared.ctx.createMediaElementSource(audio);
-              mediaSourceRef.current.connect(shared.ctx.destination);
-              mediaSourceRef.current.connect(shared.analyser);
+              if (mode === 'listen') {
+                const audioViz = new Audio(`${data.originalUrl}`);
+                audioViz.crossOrigin = "anonymous";
+                audioVizRef.current = audioViz;
+                
+                dummyGainRef.current = shared.ctx.createGain();
+                dummyGainRef.current.gain.value = 0;
+                
+                mediaSourceRef.current = shared.ctx.createMediaElementSource(audioViz);
+                mediaSourceRef.current.connect(shared.analyser);
+                shared.analyser.connect(dummyGainRef.current);
+                dummyGainRef.current.connect(shared.ctx.destination);
+                
+                audioViz.play().catch(() => console.log('Viz Autoplay blocked'));
+              } else {
+                mediaSourceRef.current = shared.ctx.createMediaElementSource(audio);
+                mediaSourceRef.current.connect(shared.ctx.destination);
+                mediaSourceRef.current.connect(shared.analyser);
+              }
             } catch (e) {
               console.error("AudioSource error:", e);
             }
@@ -629,10 +652,19 @@ function PlayerContent() {
         try { mediaSourceRef.current.disconnect(); } catch(e){}
         mediaSourceRef.current = null;
       }
+      if (dummyGainRef.current) {
+        try { dummyGainRef.current.disconnect(); } catch(e){}
+        dummyGainRef.current = null;
+      }
       if (originalAudio.current) {
         originalAudio.current.pause();
         originalAudio.current.src = "";
         originalAudio.current = null;
+      }
+      if (audioVizRef.current) {
+        audioVizRef.current.pause();
+        audioVizRef.current.src = "";
+        audioVizRef.current = null;
       }
       if (chunkPlayer.current) {
         chunkPlayer.current.pause();
@@ -656,13 +688,16 @@ function PlayerContent() {
       const currentDur = originalAudio.current?.duration || 0;
       if (!playing) {
         if (originalAudio.current) originalAudio.current.pause();
+        if (mode === 'listen' && audioVizRef.current) audioVizRef.current.pause();
         if (activeAudio.current === 'stems' && chunkPlayer.current) chunkPlayer.current.pause();
       } else {
         if (activeAudio.current === 'original' && originalAudio.current) {
           if (currentDur > 0 && originalAudio.current.currentTime >= currentDur - 0.1) {
             originalAudio.current.currentTime = 0;
+            if (audioVizRef.current) audioVizRef.current.currentTime = 0;
           }
           originalAudio.current.play();
+          if (mode === 'listen' && audioVizRef.current) audioVizRef.current.play().catch(e => console.log(e));
         } else if (activeAudio.current === 'stems' && chunkPlayer.current) {
           if (currentDur > 0 && chunkPlayer.current.getCurrentTime() >= currentDur - 0.1) {
             chunkPlayer.current.seek(0);
