@@ -36,14 +36,29 @@ export const AudioVisualizer = ({ cover, isPlaying, isActive, isListenMode }: { 
       
       if (!isPlayingRef.current) return; // Freeze exactly where it is when paused
 
+      const barCount = 16;
+      
       if (isListenMode) {
-        const time = Date.now() / 150;
-        for (let i = 0; i < dataArray.length; i++) {
-          const normalizedPos = Math.min(1, i / (dataArray.length * 0.5));
-          const envelope = Math.sin(normalizedPos * Math.PI); // Bell curve
-          const noise = Math.sin(time * 1.5 + i * 0.2) * Math.cos(time * 0.7 - i * 0.1);
-          const rawVal = 100 + noise * 120 + (Math.random() * 50);
-          dataArray[i] = Math.max(0, rawVal * (0.3 + 0.7 * envelope));
+        const time = Date.now() / 100;
+        for (let i = 0; i < barCount; i++) {
+          const dataIndex = Math.floor(i * (dataArray.length / barCount) * 0.5); 
+          
+          // Create chaotic, independent movement for each bar using out-of-phase sine waves
+          const n1 = Math.sin(time * 1.3 + i * 2.7);
+          const n2 = Math.cos(time * 0.8 - i * 3.2);
+          const n3 = Math.sin(time * 2.1 + i * 1.5);
+          
+          // Normalize to 0-1 and use a power function to create sharp peaks and flat valleys (like drum beats)
+          let noise = Math.pow((n1 + n2 + n3 + 3) / 6, 2.5); 
+          
+          // Emphasize bass (left side bars)
+          const bassMultiplier = i < 5 ? 1.3 : (1.0 - (i - 5) * 0.05);
+          
+          // Add high-frequency random jitter to simulate FFT noise
+          const jitter = Math.random() * 0.15;
+          
+          const value = (noise + jitter) * 255 * bassMultiplier * 0.8;
+          dataArray[dataIndex] = Math.min(255, Math.max(0, value));
         }
       } else {
         analyser.getByteFrequencyData(dataArray);
@@ -51,13 +66,15 @@ export const AudioVisualizer = ({ cover, isPlaying, isActive, isListenMode }: { 
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       
-      const barCount = 16;
       const barWidth = (canvas.width / barCount) * 0.8;
       const spacing = (canvas.width / barCount) * 0.2;
       let x = 0;
       
       let sum = 0;
-      for(let i = 0; i < barCount; i++) sum += dataArray[i];
+      for(let i = 0; i < barCount; i++) {
+        const dataIndex = Math.floor(i * (dataArray.length / barCount) * 0.5);
+        sum += dataArray[dataIndex];
+      }
       const avg = sum / barCount;
       
       if (avg < 2) return;
