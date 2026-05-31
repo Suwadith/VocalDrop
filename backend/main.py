@@ -51,6 +51,45 @@ ytmusic = YTMusic()
 TEMP_DIR = os.path.join(os.getcwd(), "temp")
 os.makedirs(TEMP_DIR, exist_ok=True)
 
+import time
+import shutil
+
+CACHE_TTL_SECONDS = 48 * 3600  # 48 hours
+
+def cleanup_old_cache():
+    while True:
+        try:
+            now = time.time()
+            for filename in os.listdir(TEMP_DIR):
+                file_path = os.path.join(TEMP_DIR, filename)
+                
+                # Protect currently active separation files from being deleted
+                skip = False
+                for active_vid in active_separations:
+                    if active_vid in filename:
+                        skip = True
+                        break
+                if skip:
+                    continue
+                    
+                mtime = os.path.getmtime(file_path)
+                if now - mtime > CACHE_TTL_SECONDS:
+                    if os.path.isdir(file_path):
+                        shutil.rmtree(file_path, ignore_errors=True)
+                    else:
+                        try:
+                            os.remove(file_path)
+                        except:
+                            pass
+        except Exception as e:
+            print(f"Error in automated cleanup task: {e}")
+            
+        # Run every 6 hours
+        time.sleep(6 * 3600)
+
+cleanup_thread = threading.Thread(target=cleanup_old_cache, daemon=True)
+cleanup_thread.start()
+
 class SearchQuery(BaseModel):
     q: str
 
@@ -328,7 +367,7 @@ async def mix_recording(
                     except:
                         pass
                         
-        # background_tasks.add_task(cleanup)
+        background_tasks.add_task(cleanup)
 
         sliced_inst.export(inst_path, format="wav")
         
