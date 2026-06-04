@@ -1198,11 +1198,13 @@ function PlayerContent() {
       }
 
       const mixedBlob = await res.blob();
-      const filename = `VocalDrop_${title || 'Recording'}.mp4`;
+      const contentType = res.headers.get('content-type') || 'video/mp4';
+      const ext = contentType.includes('webm') ? '.webm' : '.mp4';
+      const filename = `VocalDrop_${title || 'Recording'}${ext}`;
       
       let shared = false;
       if (navigator.share && navigator.canShare) {
-        const file = new File([mixedBlob], filename, { type: 'video/mp4' });
+        const file = new File([mixedBlob], filename, { type: contentType });
         if (navigator.canShare({ files: [file] })) {
           try {
             await navigator.share({

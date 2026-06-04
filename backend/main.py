@@ -398,23 +398,16 @@ async def mix_recording(
         
         mixed_audio.export(mixed_audio_path, format="wav")
         
-        out_path = os.path.join(TEMP_DIR, f"mixed_{unique_id}.mp4")
+        out_path = os.path.join(TEMP_DIR, f"mixed_{unique_id}{ext}")
         
-        # 4. Mux the mixed audio back with the original video, transcoded to mp4 for universal support
+        # 4. Mux the mixed audio back with the original video without re-encoding the video
         cmd = [
             "ffmpeg", "-y",
-            "-threads", "0",
             "-i", vocal_path,
             "-i", mixed_audio_path,
-            "-filter_complex", "[0:v]setpts=PTS-STARTPTS,scale=trunc(iw/2)*2:trunc(ih/2)*2[v_out]",
-            "-map", "[v_out]",
+            "-map", "0:v",
             "-map", "1:a",
-            "-c:v", "libx264",
-            "-preset", "ultrafast",
-            "-crf", "28",
-            "-profile:v", "main",
-            "-r", "30",
-            "-pix_fmt", "yuv420p",
+            "-c:v", "copy",
             "-c:a", "aac", "-b:a", "192k",
             "-movflags", "+faststart",
             out_path
@@ -422,7 +415,8 @@ async def mix_recording(
         
         subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         
-        return FileResponse(out_path, media_type="video/mp4")
+        media_type = "video/webm" if ext == ".webm" else "video/mp4"
+        return FileResponse(out_path, media_type=media_type)
     except Exception as e:
         import traceback
         traceback.print_exc()
