@@ -987,9 +987,18 @@ function PlayerContent() {
       destNode.stream.getAudioTracks().forEach((t: MediaStreamTrack) => tracks.push(t));
 
       const mixedStream = new MediaStream(tracks);
+
+      // Cloudflare strictly limits uploads to 100MB. We aim for ~90MB (720,000,000 bits) max to be safe.
+      let targetBitrate = 2500000; // Default 2.5 Mbps
+      if (duration > 0) {
+        const maxBitrate = Math.floor(720000000 / duration);
+        // Clamp between 500kbps (lowest acceptable quality) and 2.5Mbps
+        targetBitrate = Math.min(2500000, Math.max(500000, maxBitrate));
+      }
+
       let options: MediaRecorderOptions = { 
         mimeType: recMode === 'video' ? 'video/webm' : 'audio/webm',
-        videoBitsPerSecond: 2500000 // 2.5 Mbps cap to prevent 100MB Cloudflare/Next.js upload limits
+        videoBitsPerSecond: targetBitrate
       };
       if (!MediaRecorder.isTypeSupported(options.mimeType!)) {
         if (recMode === 'video' && MediaRecorder.isTypeSupported('video/mp4')) {
