@@ -217,6 +217,8 @@ VocalDrop features an advanced, entirely in-browser **Karaoke Recording Studio**
   - To record on your phone seamlessly without worrying about local IP addresses, we highly recommend using a free **Cloudflare Tunnel**.
   - Simply install `cloudflared` and run: `cloudflared tunnel --url http://localhost:3000` on your computer. 
   - This generates a secure `https://[random].trycloudflare.com` link. Open this exact link on your iPhone or Android, and you can instantly record studio-quality videos from anywhere—even if you aren't connected to the same Wi-Fi network!
+  - **⚠️ Cloudflare File Size Limit (Important for Mobile):** Cloudflare's free tunnel strictly enforces a **100MB** upload limit. Unfortunately, **iOS Safari completely ignores video compression/bitrate commands** and forces your phone to record at massive quality levels (often >50MB per minute). Therefore, if you are recording over a Cloudflare Tunnel on an iPhone, videos longer than ~2.5 minutes will exceed 100MB and fail to save (`413 Payload Too Large`). 
+  - *Fix:* To record 5+ minute epics on your phone, you must be connected to your local home Wi-Fi and access the app via your computer's local IP address (e.g., `http://192.168.1.x:3000`), completely bypassing Cloudflare's internet limit!
 
 ---
 
