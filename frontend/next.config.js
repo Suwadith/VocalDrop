@@ -2,6 +2,9 @@
 const nextConfig = {
   devIndicators: false,
   allowedDevOrigins: ['192.168.1.159', '91.125.155.226'],
+  experimental: {
+    proxyClientMaxBodySize: '500mb',
+  },
   async rewrites() {
     return [
       {
