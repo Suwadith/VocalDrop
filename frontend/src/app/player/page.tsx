@@ -1198,14 +1198,35 @@ function PlayerContent() {
       }
 
       const mixedBlob = await res.blob();
-      const url = URL.createObjectURL(mixedBlob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `VocalDrop_${title || 'Recording'}.mp4`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      const filename = `VocalDrop_${title || 'Recording'}.mp4`;
+      
+      let shared = false;
+      if (navigator.share && navigator.canShare) {
+        const file = new File([mixedBlob], filename, { type: 'video/mp4' });
+        if (navigator.canShare({ files: [file] })) {
+          try {
+            await navigator.share({
+              files: [file],
+              title: filename,
+            });
+            shared = true;
+          } catch (err) {
+            console.log("Share cancelled or failed:", err);
+          }
+        }
+      }
+
+      if (!shared) {
+        const url = URL.createObjectURL(mixedBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        // iOS Safari needs a delay before revoking the URL, otherwise the download silently fails
+        setTimeout(() => URL.revokeObjectURL(url), 2000);
+      }
       
       setShowSyncModal(false);
       URL.revokeObjectURL(recordedBlobUrl!);
