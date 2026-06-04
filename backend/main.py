@@ -403,17 +403,19 @@ async def mix_recording(
         # 4. Mux the mixed audio back with the original video, transcoded to mp4 for universal support
         cmd = [
             "ffmpeg", "-y",
+            "-threads", "0",
             "-i", vocal_path,
             "-i", mixed_audio_path,
             "-filter_complex", "[0:v]setpts=PTS-STARTPTS,scale=trunc(iw/2)*2:trunc(ih/2)*2[v_out]",
             "-map", "[v_out]",
             "-map", "1:a",
             "-c:v", "libx264",
-            "-preset", "fast",
+            "-preset", "ultrafast",
+            "-crf", "28",
             "-profile:v", "main",
             "-r", "30",
             "-pix_fmt", "yuv420p",
-            "-c:a", "aac", "-b:a", "320k",
+            "-c:a", "aac", "-b:a", "192k",
             "-movflags", "+faststart",
             out_path
         ]
