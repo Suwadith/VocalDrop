@@ -987,7 +987,10 @@ function PlayerContent() {
       destNode.stream.getAudioTracks().forEach((t: MediaStreamTrack) => tracks.push(t));
 
       const mixedStream = new MediaStream(tracks);
-      let options: MediaRecorderOptions = { mimeType: recMode === 'video' ? 'video/webm' : 'audio/webm' };
+      let options: MediaRecorderOptions = { 
+        mimeType: recMode === 'video' ? 'video/webm' : 'audio/webm',
+        videoBitsPerSecond: 2500000 // 2.5 Mbps cap to prevent 100MB Cloudflare/Next.js upload limits
+      };
       if (!MediaRecorder.isTypeSupported(options.mimeType!)) {
         if (recMode === 'video' && MediaRecorder.isTypeSupported('video/mp4')) {
           options.mimeType = 'video/mp4';
