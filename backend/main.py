@@ -408,10 +408,13 @@ async def mix_recording(
             "-map", "0:v",
             "-map", "1:a",
             "-c:v", "copy",
-            "-c:a", "aac", "-b:a", "192k",
-            "-movflags", "+faststart",
-            out_path
+            "-c:a", "aac", "-b:a", "192k"
         ]
+        
+        if ext == ".mp4":
+            cmd.extend(["-movflags", "+faststart"])
+            
+        cmd.append(out_path)
         
         subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         
