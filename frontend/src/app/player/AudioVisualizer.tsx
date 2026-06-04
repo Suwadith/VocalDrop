@@ -71,9 +71,15 @@ export const AudioVisualizer = ({ cover, isPlaying, isActive, isListenMode }: { 
       // Tint the bars using the album art image
       if (imgRef.current && imgRef.current.complete) {
         ctx.globalCompositeOperation = 'source-in';
-        ctx.filter = 'saturate(200%)';
+        ctx.filter = 'saturate(200%) brightness(1.2)';
         // Draw the image stretched across the canvas to act as a gradient fill
         ctx.drawImage(imgRef.current, 0, -canvas.height * 2, canvas.width, canvas.height * 5);
+        
+        // Guarantee visibility on extremely dark album arts by applying a minimum white overlay
+        ctx.globalCompositeOperation = 'source-atop';
+        ctx.filter = 'none';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
     };
 
@@ -87,8 +93,8 @@ export const AudioVisualizer = ({ cover, isPlaying, isActive, isListenMode }: { 
       animate={{ 
         height: isActive ? 'auto' : 0, 
         opacity: isActive ? 1 : 0,
-        marginTop: isActive ? '0.5rem' : 0,
-        marginBottom: isActive ? '1.5rem' : 0
+        marginTop: isActive ? '0.25rem' : 0,
+        marginBottom: isActive ? '0.75rem' : 0
       }}
       style={{ width: '100%', display: 'flex', justifyContent: 'center', overflow: 'hidden' }}
     >

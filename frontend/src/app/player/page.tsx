@@ -1206,7 +1206,7 @@ function PlayerContent() {
       });
 
       if (!res.ok) {
-        throw new Error('Mixing failed');
+        throw new Error(`Server returned ${res.status} ${res.statusText}`);
       }
 
       const mixedBlob = await res.blob();
@@ -1221,11 +1221,11 @@ function PlayerContent() {
           try {
             await navigator.share({
               files: [file],
-              title: filename,
+              title: title || 'My VocalDrop Recording'
             });
             shared = true;
-          } catch (err) {
-            console.log("Share cancelled or failed:", err);
+          } catch (e) {
+            console.log('User cancelled share or share failed', e);
           }
         }
       }
@@ -1233,13 +1233,16 @@ function PlayerContent() {
       if (!shared) {
         const url = URL.createObjectURL(mixedBlob);
         const a = document.createElement('a');
+        a.style.display = 'none';
         a.href = url;
         a.download = filename;
         document.body.appendChild(a);
         a.click();
-        document.body.removeChild(a);
-        // iOS Safari needs a delay before revoking the URL, otherwise the download silently fails
-        setTimeout(() => URL.revokeObjectURL(url), 2000);
+        
+        setTimeout(() => {
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        }, 2000);
       }
       
       setShowSyncModal(false);
@@ -1247,9 +1250,9 @@ function PlayerContent() {
       setRecordedBlobUrl(null);
       setRecordedBlob(null);
 
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert('Failed to save the final recording.');
+      alert(`Failed to save the final recording. Error: ${err.message}`);
     } finally {
       setIsSaving(false);
     }
