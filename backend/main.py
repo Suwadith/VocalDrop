@@ -400,6 +400,7 @@ async def mix_recording(
         
         out_path = os.path.join(TEMP_DIR, f"mixed_{unique_id}{ext}")
         
+        audio_codec = "libopus" if ext == ".webm" else "aac"
         # 4. Mux the mixed audio back with the original video without re-encoding the video
         cmd = [
             "ffmpeg", "-y",
@@ -408,7 +409,7 @@ async def mix_recording(
             "-map", "0:v",
             "-map", "1:a",
             "-c:v", "copy",
-            "-c:a", "aac", "-b:a", "192k"
+            "-c:a", audio_codec, "-b:a", "192k"
         ]
         
         if ext == ".mp4":
